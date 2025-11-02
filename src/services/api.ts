@@ -55,7 +55,21 @@ export async function getGame(gameId: string): Promise<GameResponse> {
 
 export function initSocket(): Socket {
   if (!socket) {
-    socket = io('http://localhost:5174');
+    socket = io('http://localhost:5174', {
+      transports: ['websocket', 'polling'],
+    });
+    
+    socket.on('connect', () => {
+      console.log('✅ Socket.IO connecté:', socket?.id);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('❌ Socket.IO déconnecté');
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('❌ Erreur de connexion Socket.IO:', error);
+    });
   }
   return socket;
 }

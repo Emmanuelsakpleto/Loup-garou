@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameView, type GameState, type Player, type Role, Team } from './types';
 import { ROLES } from './constants';
-import { createGame, joinGame, initSocket, joinGameRoom, getSocket } from './services/api';
+import { createGame, joinGame, getGame, initSocket, joinGameRoom, getSocket } from './services/api';
 import {
   BookOpenIcon,
   CopyIcon,
@@ -72,21 +72,29 @@ export default function App() {
 
     // Socket.IO event listeners
     useEffect(() => {
-        const socket = getSocket();
-        if (!socket) return;
+        // Initialiser le socket dès le montage du composant
+        const socket = initSocket();
 
         // Écouter l'arrivée d'un nouveau joueur
         socket.on('player-joined', (data: { playerId: string; playerName: string }) => {
-            console.log('Nouveau joueur:', data);
-            setGameState(prev => ({
-                ...prev,
-                players: [...prev.players, { id: data.playerId, name: data.playerName }],
-            }));
+            console.log('🎮 Nouveau joueur reçu via Socket.IO:', data);
+            setGameState(prev => {
+                // Vérifier si le joueur n'existe pas déjà dans la liste
+                const playerExists = prev.players.some(p => p.id === data.playerId);
+                if (playerExists) {
+                    console.log('ℹ️ Joueur déjà dans la liste, ignoré');
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    players: [...prev.players, { id: data.playerId, name: data.playerName }],
+                };
+            });
         });
 
         // Écouter les mises à jour de l'état du jeu
         socket.on('game-updated', (data: any) => {
-            console.log('Mise à jour du jeu:', data);
+            console.log('🔄 Mise à jour du jeu:', data);
             // TODO: synchroniser l'état du jeu avec les données du serveur
         });
 
@@ -138,22 +146,28 @@ export default function App() {
                 selectedRoles: gameState.selectedRoles,
             });
             
+            console.log('✅ Jeu créé:', result);
+            
+            // Récupérer les données complètes du jeu
+            const gameData = await getGame(result.gameId);
+            console.log('📋 Données du jeu:', gameData.game);
+            
             const narratorPlayer: Player = { id: result.hostToken, name: narratorName };
             
             setGameState(prev => ({
                 ...prev,
                 gameCode: result.code,
-                players: [narratorPlayer],
+                players: gameData.game.players.map(p => ({ id: p.id, name: p.name })),
                 view: GameView.LOBBY,
                 currentUser: narratorPlayer,
                 isNarrator: true,
             }));
             
-            // Initialiser Socket.IO et rejoindre la room
-            initSocket();
+            // Rejoindre la room Socket.IO (le socket est déjà initialisé)
             joinGameRoom(result.gameId);
+            console.log('🎮 Room rejointe:', result.gameId);
         } catch (error) {
-            console.error('Erreur lors de la création du jeu:', error);
+            console.error('❌ Erreur lors de la création du jeu:', error);
             alert('Impossible de créer le jeu. Vérifiez que le backend est bien lancé.');
         }
     };
@@ -163,6 +177,12 @@ export default function App() {
             try {
                 const result = await joinGame(joinCode.trim().toUpperCase(), playerName);
                 
+                console.log('✅ Jeu rejoint:', result);
+                
+                // Récupérer la liste complète des joueurs depuis le backend
+                const gameData = await getGame(result.gameId);
+                console.log('📋 Liste complète des joueurs:', gameData.game.players);
+                
                 const newUser: Player = { id: result.playerId, name: playerName };
                 
                 setGameState(prev => ({
@@ -171,15 +191,15 @@ export default function App() {
                     isNarrator: false,
                     currentUser: newUser,
                     view: GameView.LOBBY,
-                    // Les autres joueurs seront récupérés via Socket.IO
-                    players: [newUser],
+                    // Afficher tous les joueurs déjà présents
+                    players: gameData.game.players.map(p => ({ id: p.id, name: p.name })),
                 }));
                 
-                // Initialiser Socket.IO et rejoindre la room
-                initSocket();
+                // Rejoindre la room Socket.IO (le socket est déjà initialisé)
                 joinGameRoom(result.gameId);
+                console.log('🎮 Room rejointe:', result.gameId);
             } catch (error) {
-                console.error('Erreur lors de la connexion au jeu:', error);
+                console.error('❌ Erreur lors de la connexion au jeu:', error);
                 alert('Impossible de rejoindre le jeu. Vérifiez le code et que le backend est bien lancé.');
             }
         }
@@ -224,7 +244,11 @@ export default function App() {
     }, [gameState.players, gameState.selectedRoles]);
 
     const handleShare = async () => {
-        if(!gameState.gameCode) return;
+        if(!gameState.gameCode) {
+            console.warn('⚠️ Pas de code de jeu à partager');
+            return;
+        }
+        
         const gameLink = `${window.location.origin}#join=${gameState.gameCode}`;
         const shareData = {
             title: 'Rejoins ma partie de Loup-Garou !',
@@ -232,19 +256,30 @@ export default function App() {
             url: gameLink,
         };
 
+        // Essayer d'abord le Web Share API
         if (navigator.share) {
             try {
                 await navigator.share(shareData);
+                console.log('✅ Partagé via Web Share API');
                 return;
             } catch (err) {
-                console.error("Erreur de partage : ", err);
+                console.log('ℹ️ Web Share annulé ou non disponible:', err);
             }
         }
         
+        // Fallback : copier dans le presse-papiers
         const textToCopy = `Rejoins ma partie de Loup-Garou ! \nCode : ${gameState.gameCode}\nLien : ${gameLink}`;
-        navigator.clipboard.writeText(textToCopy);
-        setShowCopied(true);
-        setTimeout(() => setShowCopied(false), 2000);
+        
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            console.log('✅ Code copié dans le presse-papiers');
+            setShowCopied(true);
+            setTimeout(() => setShowCopied(false), 2000);
+        } catch (err) {
+            console.error('❌ Erreur lors de la copie:', err);
+            // Fallback ultime : sélection manuelle
+            alert(`Code de la partie : ${gameState.gameCode}`);
+        }
     };
     
     const filteredRoles = useMemo(() => {
