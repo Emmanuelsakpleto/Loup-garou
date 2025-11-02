@@ -3,17 +3,28 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameView, type GameState, type Player, type Role, Team } from './types';
 import { ROLES } from './constants';
 import { createGame, joinGame, getGame, assignRoles as assignRolesAPI, initSocket, joinGameRoom, getSocket } from './services/api';
+import { getHistory, getStats, clearHistory, deleteGame, addCreatedGame, addJoinedGame, type GameHistory } from './services/history';
 import {
+  BookIcon,
   BookOpenIcon,
+  CircusIcon,
   ClipboardIcon,
   CopyIcon,
+  DoorOpenIcon,
   EmailIcon,
   EyeOffIcon,
+  GamepadIcon,
+  HistoryIcon,
   HomeIcon,
+  MaskIcon,
   MinusIcon,
+  PeopleIcon,
   PlusIcon,
+  ScrollIcon,
+  SettingsIcon,
   SMSIcon,
   SwordsIcon,
+  TrashIcon,
   UserIcon,
   UsersIcon,
   WerewolfIcon,
@@ -38,10 +49,10 @@ const teamColors: Record<Team, string> = {
 }
 
 const RoleCard: React.FC<{ role: Role, children?: React.ReactNode }> = ({ role, children }) => (
-    <div className={`bg-slate-800 border border-slate-700 rounded-lg p-4 text-center transform hover:scale-105 transition-transform duration-300 flex flex-col h-full border-t-4 ${teamColors[role.team]}`}>
+    <div className={`bg-slate-800 border border-slate-700 rounded-lg p-4 text-center transform transition-all duration-300 flex flex-col h-full border-t-4 card-3d hover:shadow-2xl ${teamColors[role.team]}`}>
         <role.icon className="w-16 h-16 mx-auto mb-3 text-cyan-400" />
-        <h3 className="text-xl font-bold text-white mb-1 font-serif">{role.name}</h3>
-        <p className="text-cyan-300 text-sm font-semibold mb-2">{role.power}</p>
+        <h3 className="text-xl font-bold text-white mb-1 font-creepy">{role.name}</h3>
+        <p className="text-cyan-300 text-sm font-semibold mb-2 font-typewriter">{role.power}</p>
         <p className="text-sm text-slate-400 mb-4 flex-grow">{role.description}</p>
         {children}
     </div>
@@ -75,6 +86,8 @@ export default function App() {
     const [showCopied, setShowCopied] = useState(false);
     const [isRoleRevealed, setIsRoleRevealed] = useState(false);
     const [roleFilter, setRoleFilter] = useState<Team | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
 
     // Socket.IO event listeners
     useEffect(() => {
@@ -107,6 +120,8 @@ export default function App() {
         // Écouter l'attribution des rôles
         socket.on('roles-assigned', (data: { players: Array<{ id: string; name: string; roleId?: string }> }) => {
             console.log('🎭 Rôles attribués reçus via Socket.IO:', data);
+            setIsLoading(false);
+            setLoadingMessage('');
             setGameState(prev => {
                 // Mettre à jour les joueurs avec leurs rôles
                 const updatedPlayers = data.players.map(p => {
@@ -166,6 +181,9 @@ export default function App() {
     }, [gameState.selectedRoles]);
 
     const handleStartLobby = async () => {
+        setIsLoading(true);
+        setLoadingMessage('Création de la partie...');
+        
         try {
             const result = await createGame(narratorName, {
                 selectedRoles: gameState.selectedRoles,
@@ -176,6 +194,10 @@ export default function App() {
             // Récupérer les données complètes du jeu
             const gameData = await getGame(result.gameId);
             console.log('📋 Données du jeu:', gameData.game);
+            
+            // Enregistrer dans l'historique
+            const playerCount = Object.values(gameState.selectedRoles).reduce((a: number, b: number) => a + b, 0);
+            addCreatedGame(result.code, playerCount, gameState.selectedRoles);
             
             const narratorPlayer: Player = { id: result.hostToken, name: narratorName };
             
@@ -196,11 +218,17 @@ export default function App() {
         } catch (error) {
             console.error('❌ Erreur lors de la création du jeu:', error);
             alert('Impossible de créer le jeu. Vérifiez que le backend est bien lancé.');
+        } finally {
+            setIsLoading(false);
+            setLoadingMessage('');
         }
     };
 
     const handleJoinLobby = async () => {
         if (joinCode.trim() && playerName.trim()) {
+            setIsLoading(true);
+            setLoadingMessage('Connexion à la partie...');
+            
             try {
                 const result = await joinGame(joinCode.trim().toUpperCase(), playerName);
                 
@@ -209,6 +237,9 @@ export default function App() {
                 // Récupérer la liste complète des joueurs depuis le backend
                 const gameData = await getGame(result.gameId);
                 console.log('📋 Liste complète des joueurs:', gameData.game.players);
+                
+                // Enregistrer dans l'historique (le rôle sera ajouté plus tard quand il sera révélé)
+                addJoinedGame(joinCode.trim().toUpperCase());
                 
                 const newUser: Player = { id: result.playerId, name: playerName };
                 
@@ -236,6 +267,9 @@ export default function App() {
                 } else {
                     alert('Impossible de rejoindre le jeu. Vérifiez le code et que le backend est bien lancé.');
                 }
+            } finally {
+                setIsLoading(false);
+                setLoadingMessage('');
             }
         }
     };
@@ -255,6 +289,9 @@ export default function App() {
             return;
         }
 
+        setIsLoading(true);
+        setLoadingMessage('Distribution des rôles...');
+        
         try {
             console.log('🎭 Demande d\'attribution des rôles...');
             await assignRolesAPI(gameState.gameId, gameState.hostToken, gameState.selectedRoles);
@@ -263,6 +300,8 @@ export default function App() {
         } catch (error) {
             console.error('❌ Erreur lors de l\'attribution des rôles:', error);
             alert('Impossible d\'attribuer les rôles. Vérifiez que le backend est bien lancé.');
+            setIsLoading(false);
+            setLoadingMessage('');
         }
     }, [gameState.gameId, gameState.hostToken, gameState.selectedRoles]);
 
@@ -334,17 +373,18 @@ export default function App() {
                 return (
                     <div className="text-center">
                         <div className="mb-12">
-                            <WerewolfIcon className="w-24 h-24 mx-auto text-red-500" />
-                            <h1 className="text-4xl md:text-5xl font-bold font-serif mt-4 text-white">Loup-Garou</h1>
-                            <p className="text-slate-400 mt-2">Le village s'endort...</p>
+                            <WerewolfIcon className="w-24 h-24 mx-auto text-red-500 animate-pulse-glow" />
+                            <h1 className="text-5xl md:text-6xl font-bold font-horror mt-4 text-white text-glow-red">Loup-Garou</h1>
+                            <p className="text-slate-400 mt-2 text-lg italic font-typewriter">Le village s'endort...</p>
                         </div>
                         <div className="space-y-4 max-w-sm mx-auto">
-                            <button onClick={handleCreateGame} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-transform transform hover:scale-105">
-                                Créer une partie
+                            <button onClick={handleCreateGame} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all transform hover:scale-105 hover:shadow-lg btn-game flex items-center justify-center space-x-2">
+                                <GamepadIcon className="w-6 h-6" />
+                                <span>Créer une partie</span>
                             </button>
                             <div className="relative flex py-3 items-center">
                                 <div className="flex-grow border-t border-slate-600"></div>
-                                <span className="flex-shrink mx-4 text-slate-400">ou</span>
+                                <span className="flex-shrink mx-4 text-slate-400 font-typewriter text-sm">ou</span>
                                 <div className="flex-grow border-t border-slate-600"></div>
                             </div>
                             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
@@ -362,13 +402,21 @@ export default function App() {
                                     onChange={(e) => setJoinCode(e.target.value)}
                                     className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 mb-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 />
-                                <button onClick={handleJoinLobby} disabled={!joinCode.trim() || !playerName.trim()} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                    Rejoindre une partie
+                                <button onClick={handleJoinLobby} disabled={!joinCode.trim() || !playerName.trim()} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed btn-game flex items-center justify-center space-x-2">
+                                    <DoorOpenIcon className="w-5 h-5" />
+                                    <span>Rejoindre une partie</span>
                                 </button>
                             </div>
-                             <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className="w-full text-cyan-400 hover:text-cyan-300 font-bold py-3 px-4 rounded-lg transition-colors">
-                                Consulter les rôles
-                            </button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className="flex items-center justify-center space-x-2 text-cyan-400 hover:text-cyan-300 font-bold py-3 px-4 rounded-lg transition-all border border-cyan-800 hover:border-cyan-600 hover:scale-105 btn-game">
+                                    <BookIcon className="w-5 h-5" />
+                                    <span>Rôles</span>
+                                </button>
+                                <button onClick={() => setView(GameView.HISTORY)} className="flex items-center justify-center space-x-2 text-cyan-400 hover:text-cyan-300 font-bold py-3 px-4 rounded-lg transition-all border border-cyan-800 hover:border-cyan-600 hover:scale-105 btn-game">
+                                    <ScrollIcon className="w-5 h-5" />
+                                    <span>Historique</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -376,8 +424,11 @@ export default function App() {
                 const groupedRoles = groupRolesByCategory(ROLES);
                 return (
                     <div className="pb-24">
-                        <h2 className="text-3xl font-bold text-center mb-2 font-serif">Configuration de la Partie</h2>
-                        <p className="text-slate-400 text-center mb-8">Choisissez les rôles pour votre partie.</p>
+                        <div className="text-center mb-6">
+                            <SettingsIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Configuration</h2>
+                        </div>
+                        <p className="text-slate-400 text-center mb-8 text-lg font-typewriter">Choisissez les rôles pour votre partie</p>
                         <div className="mb-6 bg-slate-800 p-4 rounded-lg border border-slate-700">
                            <label htmlFor="narratorName" className="block text-sm font-medium text-slate-300 mb-2">Votre nom (Narrateur)</label>
                             <input
@@ -391,12 +442,12 @@ export default function App() {
                         <div className="space-y-8">
                             {Object.entries(groupedRoles).map(([category, roles]) => (
                                 <div key={category}>
-                                    <h3 className="text-2xl font-serif text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
+                                    <h3 className="text-2xl font-creepy text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {roles.map(role => (
                                             <div key={role.id} className={`bg-slate-800 border border-slate-700 rounded-lg p-4 flex flex-col items-center border-t-4 ${teamColors[role.team]}`}>
                                                 <role.icon className="w-12 h-12 mx-auto mb-2 text-cyan-400" />
-                                                <h3 className="text-lg font-bold text-white text-center">{role.name}</h3>
+                                                <h3 className="text-lg font-bold text-white text-center font-typewriter">{role.name}</h3>
                                                 <p className="text-cyan-300 text-xs font-semibold mb-3 text-center">{role.power}</p>
                                                 <div className="flex items-center space-x-4 mt-auto">
                                                     <button onClick={() => updateRoleCount(role.id, -1)} className="bg-slate-700 p-2 rounded-full hover:bg-slate-600 transition-colors"><MinusIcon className="w-5 h-5"/></button>
@@ -426,7 +477,10 @@ export default function App() {
                  const canStartGame = gameState.players.length -1 === totalSelectedRoles;
                 return (
                     <div className="max-w-md mx-auto text-center pb-24">
-                        <h2 className="text-3xl font-bold font-serif mb-4">Salon de la Partie</h2>
+                        <div className="mb-6">
+                            <CircusIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Salon</h2>
+                        </div>
                         {gameState.isNarrator && gameState.gameCode && (
                           <div className="mb-6">
                             <p className="text-slate-400 mb-2">Code de la partie :</p>
@@ -511,8 +565,11 @@ export default function App() {
                 const myRole = gameState.currentUser?.id ? gameState.players.find(p => p.id === gameState.currentUser!.id)?.role : null;
                 return (
                     <div className="max-w-md mx-auto text-center pb-24">
-                         <h2 className="text-3xl font-bold font-serif mb-2">Votre Rôle est...</h2>
-                         <p className="text-slate-400 mb-8">Gardez-le secret !</p>
+                         <div className="mb-6">
+                            <MaskIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Ton Rôle</h2>
+                         </div>
+                         <p className="text-slate-400 mb-8 text-lg font-typewriter">Gardez-le secret !</p>
                          {myRole ? (
                              !isRoleRevealed ? (
                                  <div 
@@ -520,8 +577,8 @@ export default function App() {
                                      className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-4 text-center cursor-pointer transform hover:scale-105 transition-transform duration-300 flex flex-col items-center justify-center min-h-[320px]"
                                  >
                                      <EyeOffIcon className="w-20 h-20 mx-auto mb-4 text-slate-500" />
-                                     <h3 className="text-2xl font-bold text-white mb-2 font-serif">Rôle Caché</h3>
-                                     <p className="text-slate-400">Cliquez pour Révéler</p>
+                                     <h3 className="text-2xl font-bold text-white mb-2 font-creepy">Rôle Caché</h3>
+                                     <p className="text-slate-400 font-typewriter">Cliquez pour Révéler</p>
                                  </div>
                              ) : (
                                  <RoleCard role={myRole}/>
@@ -532,7 +589,10 @@ export default function App() {
             case GameView.PLAYERS_LIST:
                  return (
                     <div className="max-w-4xl mx-auto pb-24">
-                         <h2 className="text-3xl font-bold text-center mb-6 font-serif">Liste des Joueurs</h2>
+                         <div className="text-center mb-6">
+                            <PeopleIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Les Joueurs</h2>
+                         </div>
                          {gameState.isNarrator ? (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {gameState.players.filter(p => p.id !== 'narrator').map(player => (
@@ -568,7 +628,10 @@ export default function App() {
                 const groupedFilteredRoles = groupRolesByCategory(filteredRoles);
                 return (
                     <div className="max-w-4xl mx-auto pb-24">
-                        <h2 className="text-3xl font-bold text-center mb-4 font-serif">Guide des Rôles</h2>
+                        <div className="text-center mb-6">
+                            <BookOpenIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Guide des Rôles</h2>
+                        </div>
                         <div className="flex justify-center gap-2 mb-8">
                             <button onClick={() => setRoleFilter(null)} className={`px-4 py-2 rounded-full text-sm font-semibold ${!roleFilter ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Tous</button>
                             <button onClick={() => setRoleFilter(Team.VILLAGER)} className={`px-4 py-2 rounded-full text-sm font-semibold ${roleFilter === Team.VILLAGER ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Villageois</button>
@@ -579,13 +642,141 @@ export default function App() {
                         <div className="space-y-8">
                            {Object.entries(groupedFilteredRoles).map(([category, roles]) => (
                                 <div key={category}>
-                                    <h3 className="text-2xl font-serif text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
+                                    <h3 className="text-2xl font-creepy text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {roles.map(role => <RoleCard key={role.id} role={role} />)}
                                     </div>
                                 </div>
                            ))}
                         </div>
+                    </div>
+                );
+            case GameView.HISTORY:
+                const history = getHistory();
+                const stats = getStats();
+                
+                const formatDate = (dateString: string) => {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('fr-FR', { 
+                        day: 'numeric', 
+                        month: 'short', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                };
+                
+                const handleClearHistory = () => {
+                    if (confirm('Êtes-vous sûr de vouloir supprimer tout l\'historique ?')) {
+                        clearHistory();
+                        // Forcer le re-render
+                        setGameState(prev => ({ ...prev }));
+                    }
+                };
+                
+                const handleDeleteGame = (gameId: string) => {
+                    deleteGame(gameId);
+                    setGameState(prev => ({ ...prev }));
+                };
+                
+                return (
+                    <div className="max-w-4xl mx-auto pb-24">
+                        <div className="text-center mb-6">
+                            <ScrollIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
+                            <h2 className="text-4xl font-bold font-creepy text-glow">Historique</h2>
+                        </div>
+                        <p className="text-slate-400 text-center mb-8 text-lg font-typewriter">Vos parties précédentes</p>
+                        
+                        {/* Statistiques */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                                <p className="text-slate-400 text-sm mb-1">Parties créées</p>
+                                <p className="text-3xl font-bold text-cyan-400">{stats.totalGamesCreated}</p>
+                            </div>
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                                <p className="text-slate-400 text-sm mb-1">Parties rejointes</p>
+                                <p className="text-3xl font-bold text-cyan-400">{stats.totalGamesJoined}</p>
+                            </div>
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                                <p className="text-slate-400 text-sm mb-1">Total</p>
+                                <p className="text-3xl font-bold text-white">{stats.totalGamesCreated + stats.totalGamesJoined}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Rôles joués */}
+                        {Object.keys(stats.rolesPlayed).length > 0 && (
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-8">
+                                <h3 className="text-xl font-bold mb-4 font-creepy text-cyan-400">Rôles joués</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {Object.entries(stats.rolesPlayed)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([role, count]) => (
+                                            <div key={role} className="bg-slate-900 rounded-lg p-3 flex justify-between items-center">
+                                                <span className="text-sm">{role}</span>
+                                                <span className="text-cyan-400 font-bold">×{count}</span>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Liste des parties */}
+                        {history.length === 0 ? (
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 text-center">
+                                <HistoryIcon className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+                                <p className="text-slate-400">Aucune partie dans l'historique</p>
+                                <p className="text-slate-500 text-sm mt-2">Créez ou rejoignez une partie pour commencer !</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold">Parties ({history.length})</h3>
+                                    <button 
+                                        onClick={handleClearHistory}
+                                        className="flex items-center space-x-2 text-red-400 hover:text-red-300 transition-colors text-sm"
+                                    >
+                                        <TrashIcon className="w-4 h-4" />
+                                        <span>Tout supprimer</span>
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {history.map((game) => (
+                                        <div 
+                                            key={game.id} 
+                                            className="bg-slate-800 border border-slate-700 rounded-lg p-4"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-2 mb-2">
+                                                        <span className="px-2 py-1 rounded text-xs font-semibold bg-cyan-900 text-cyan-300">
+                                                            {game.type === 'created' ? '👑 Créée' : '🎮 Rejointe'}
+                                                        </span>
+                                                        <span className="text-slate-400 text-sm">{formatDate(game.date)}</span>
+                                                    </div>
+                                                    <p className="text-2xl font-mono font-bold text-white mb-2">{game.code}</p>
+                                                    {game.playerCount && (
+                                                        <p className="text-slate-400 text-sm">
+                                                            {game.playerCount} joueur{game.playerCount > 1 ? 's' : ''}
+                                                        </p>
+                                                    )}
+                                                    {game.myRole && (
+                                                        <p className="text-cyan-400 text-sm font-semibold">
+                                                            Rôle : {game.myRole}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteGame(game.id)}
+                                                    className="text-slate-500 hover:text-red-400 transition-colors p-2"
+                                                >
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 );
             default:
@@ -597,6 +788,17 @@ export default function App() {
 
     return (
         <div className="min-h-screen text-gray-200 p-4 sm:p-6">
+            {/* Indicateur de chargement */}
+            {isLoading && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+                    <div className="bg-slate-800 border-2 border-cyan-600 rounded-lg p-8 text-center max-w-sm mx-4 shadow-2xl">
+                        <div className="animate-spin-glow rounded-full h-16 w-16 border-4 border-slate-600 border-t-cyan-500 mx-auto mb-4"></div>
+                        <p className="text-xl font-bold text-white mb-2 font-creepy">{loadingMessage}</p>
+                        <p className="text-slate-400 text-sm font-typewriter">Veuillez patienter...</p>
+                    </div>
+                </div>
+            )}
+            
             <div className="max-w-5xl mx-auto">
                  {gameState.view !== GameView.HOME && (
                     <header className="mb-8">
@@ -606,7 +808,7 @@ export default function App() {
                         </button>
                     </header>
                 )}
-                <main>
+                <main className="animate-fadeIn">
                     {renderView()}
                 </main>
 

@@ -29,6 +29,7 @@ export enum GameView {
   ROLE_REVEAL = 'ROLE_REVEAL',
   ROLE_DIRECTORY = 'ROLE_DIRECTORY',
   PLAYERS_LIST = 'PLAYERS_LIST',
+  HISTORY = 'HISTORY',
 }
 
 export interface GameState {
