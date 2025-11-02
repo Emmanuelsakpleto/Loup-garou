@@ -1,7 +1,8 @@
 // FIX: Corrected the React import by removing the extraneous 'a,'.
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameView, type GameState, type Player, type Role, Team } from './types';
 import { ROLES } from './constants';
+import { createGame, joinGame, initSocket, joinGameRoom, getSocket } from './services/api';
 import {
   BookOpenIcon,
   CopyIcon,
@@ -69,6 +70,33 @@ export default function App() {
     const [isRoleRevealed, setIsRoleRevealed] = useState(false);
     const [roleFilter, setRoleFilter] = useState<Team | null>(null);
 
+    // Socket.IO event listeners
+    useEffect(() => {
+        const socket = getSocket();
+        if (!socket) return;
+
+        // Écouter l'arrivée d'un nouveau joueur
+        socket.on('player-joined', (data: { playerId: string; playerName: string }) => {
+            console.log('Nouveau joueur:', data);
+            setGameState(prev => ({
+                ...prev,
+                players: [...prev.players, { id: data.playerId, name: data.playerName }],
+            }));
+        });
+
+        // Écouter les mises à jour de l'état du jeu
+        socket.on('game-updated', (data: any) => {
+            console.log('Mise à jour du jeu:', data);
+            // TODO: synchroniser l'état du jeu avec les données du serveur
+        });
+
+        // Nettoyage à la destruction du composant
+        return () => {
+            socket.off('player-joined');
+            socket.off('game-updated');
+        };
+    }, []);
+
     const resetGame = () => {
         setGameState(initialState);
         setJoinCode('');
@@ -104,34 +132,56 @@ export default function App() {
         return Object.values(gameState.selectedRoles).reduce((sum: number, count: number) => sum + count, 0);
     }, [gameState.selectedRoles]);
 
-    const handleStartLobby = () => {
-        const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const narratorPlayer: Player = { id: 'narrator', name: narratorName };
-        setGameState(prev => ({
-            ...prev,
-            gameCode,
-            players: [narratorPlayer],
-            view: GameView.LOBBY,
-            currentUser: narratorPlayer,
-        }));
-    };
-
-    const handleJoinLobby = () => {
-        if (joinCode.trim() && playerName.trim()) {
-            const newUser: Player = { id: `player-${Date.now()}`, name: playerName };
+    const handleStartLobby = async () => {
+        try {
+            const result = await createGame(narratorName, {
+                selectedRoles: gameState.selectedRoles,
+            });
+            
+            const narratorPlayer: Player = { id: result.hostToken, name: narratorName };
+            
             setGameState(prev => ({
                 ...prev,
-                gameCode: joinCode.trim().toUpperCase(),
-                isNarrator: false,
-                players: [
-                    { id: 'narrator', name: 'Narrateur' }, 
-                    { id: 'p1', name: 'Alice'}, 
-                    { id: 'p2', name: 'Bob'},
-                    newUser
-                ],
-                currentUser: newUser,
+                gameCode: result.code,
+                players: [narratorPlayer],
                 view: GameView.LOBBY,
+                currentUser: narratorPlayer,
+                isNarrator: true,
             }));
+            
+            // Initialiser Socket.IO et rejoindre la room
+            initSocket();
+            joinGameRoom(result.gameId);
+        } catch (error) {
+            console.error('Erreur lors de la création du jeu:', error);
+            alert('Impossible de créer le jeu. Vérifiez que le backend est bien lancé.');
+        }
+    };
+
+    const handleJoinLobby = async () => {
+        if (joinCode.trim() && playerName.trim()) {
+            try {
+                const result = await joinGame(joinCode.trim().toUpperCase(), playerName);
+                
+                const newUser: Player = { id: result.playerId, name: playerName };
+                
+                setGameState(prev => ({
+                    ...prev,
+                    gameCode: joinCode.trim().toUpperCase(),
+                    isNarrator: false,
+                    currentUser: newUser,
+                    view: GameView.LOBBY,
+                    // Les autres joueurs seront récupérés via Socket.IO
+                    players: [newUser],
+                }));
+                
+                // Initialiser Socket.IO et rejoindre la room
+                initSocket();
+                joinGameRoom(result.gameId);
+            } catch (error) {
+                console.error('Erreur lors de la connexion au jeu:', error);
+                alert('Impossible de rejoindre le jeu. Vérifiez le code et que le backend est bien lancé.');
+            }
         }
     };
     
