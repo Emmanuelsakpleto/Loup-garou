@@ -376,9 +376,10 @@ export default function App() {
                             <img 
                                 src="/icons/page-accueil-loup-transparent.png" 
                                 alt="Loup-Garou Logo" 
-                                className="w-32 h-32 md:w-40 md:h-40 mx-auto animate-pulse-glow drop-shadow-2xl"
+                                className="w-48 h-48 md:w-56 md:h-56 mx-auto animate-pulse-glow drop-shadow-2xl"
+                                style={{ mixBlendMode: 'multiply' }}
                             />
-                            <h1 className="text-5xl md:text-6xl font-bold font-horror mt-4 text-white text-glow-red">Loup-Garou</h1>
+                            <h1 className="text-3xl md:text-6xl font-bold font-horror mt-4 text-white text-glow-red">Loup-Garou</h1>
                             <p className="text-slate-400 mt-2 text-lg italic font-typewriter">Le village s'endort...</p>
                         </div>
                         <div className="space-y-4 max-w-sm mx-auto">
