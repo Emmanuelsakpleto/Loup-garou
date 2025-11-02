@@ -1,10 +1,14 @@
 import { io, Socket } from 'socket.io-client';
 
-const rawApiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5174';
-const API_BASE = rawApiBase.endsWith('/api')
-  ? rawApiBase.replace(/\/$/, '')
-  : `${rawApiBase.replace(/\/$/, '')}/api`;
-const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:5174').replace(/\/$/, '');
+const envApiBase = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
+const rawApiBase = envApiBase.length > 0 ? envApiBase : 'http://localhost:5174';
+const sanitizedApiBase = rawApiBase.replace(/\/$/, '');
+const API_BASE = sanitizedApiBase.endsWith('/api')
+  ? sanitizedApiBase
+  : `${sanitizedApiBase}/api`;
+
+const envSocketUrl = (import.meta.env.VITE_SOCKET_URL ?? '').trim();
+const SOCKET_URL = (envSocketUrl.length > 0 ? envSocketUrl : 'http://localhost:5174').replace(/\/$/, '');
 
 // Types pour les réponses API
 export interface CreateGameResponse {
