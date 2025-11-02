@@ -373,13 +373,17 @@ export default function App() {
                 return (
                     <div className="text-center">
                         <div className="mb-12">
-                            <img 
-                                src="/icons/page-accueil-loup-transparent.png" 
-                                alt="Loup-Garou Logo" 
-                                className="w-48 h-48 md:w-56 md:h-56 mx-auto animate-pulse-glow drop-shadow-2xl"
-                                style={{ mixBlendMode: 'multiply' }}
-                            />
-                            <h1 className="text-3xl md:text-6xl font-bold font-horror mt-4 text-white text-glow-red">Loup-Garou</h1>
+                            <div className="relative w-48 h-48 md:w-56 md:h-56 mx-auto">
+                                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse-glow"></div>
+                                <div className="absolute inset-[3px] rounded-full bg-gray-900 flex items-center justify-center p-6">
+                                    <img 
+                                        src="/icons/page-accueil-loup-transparent.png" 
+                                        alt="Loup-Garou Logo" 
+                                        className="w-full h-full object-contain drop-shadow-2xl"
+                                    />
+                                </div>
+                            </div>
+                            <h1 className="text-3xl md:text-6xl font-bold font-horror mt-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 drop-shadow-lg">Loup-Garou</h1>
                             <p className="text-slate-400 mt-2 text-lg italic font-typewriter">Le village s'endort...</p>
                         </div>
                         <div className="space-y-4 max-w-sm mx-auto">
