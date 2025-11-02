@@ -1,0 +1,282 @@
+[
+  {
+    "id": "werewolf",
+    "name": "Loup-Garou",
+    "team": "WEREWOLF",
+    "category": "LOUPS-GAROUS",
+    "power": "Vote avec les autres loups pour tuer.",
+    "description": "Chaque nuit, il se réunit avec ses compères pour dévorer un villageois. Le jour, il se fait passer pour un innocent.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "big-bad-wolf",
+    "name": "Grand Méchant Loup",
+    "team": "WEREWOLF",
+    "category": "LOUPS-GAROUS",
+    "power": "Peut tuer deux fois (1 seule fois).",
+    "description": "Tant qu'il n'est pas le dernier loup-garou, il peut dévorer une deuxième victime chaque nuit.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "infect-father-wolf",
+    "name": "Loup Infect Père des Loups",
+    "team": "WEREWOLF",
+    "category": "LOUPS-GAROUS",
+    "power": "Transforme un villageois en loup (1 fois).",
+    "description": "Une fois dans la partie, il peut choisir de ne pas tuer et d'infecter sa victime, la transformant en loup-garou.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "shaman-wolf",
+    "name": "Loup Shaman",
+    "team": "WEREWOLF",
+    "category": "LOUPS-GAROUS",
+    "power": "Bloque le pouvoir d'une cible.",
+    "description": "Chaque nuit, il peut utiliser ses pouvoirs pour bloquer le pouvoir d'un autre joueur pour le tour suivant.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "alpha-wolf",
+    "name": "Loup Alpha",
+    "team": "WEREWOLF",
+    "category": "LOUPS-GAROUS",
+    "power": "Sa mort bloque l'action des loups.",
+    "description": "Chef de la meute. Si le Loup Alpha meurt, les autres loups-garous, de chagrin, ne pourront pas tuer la nuit suivante.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "villager",
+    "name": "Simple Villageois",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Vote pour éliminer les suspects.",
+    "description": "Il n'a aucune compétence particulière. Son seul objectif est de démasquer et d'éliminer les Loups-Garous.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "seer",
+    "name": "Voyante",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Découvre le rôle d'un joueur par nuit.",
+    "description": "Chaque nuit, elle peut espionner un joueur et découvrir sa véritable identité. Elle doit aider les villageois sans se faire démasquer.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "witch",
+    "name": "Sorcière",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Possède une potion de vie et une de mort.",
+    "description": "Elle dispose de deux potions : une pour sauver la victime des Loups-Garous, une autre pour empoisonner un joueur. Elle ne peut utiliser chaque potion qu'une seule fois.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "hunter",
+    "name": "Chasseur",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Tire sur quelqu'un à sa mort.",
+    "description": "S'il meurt, il doit désigner un autre joueur qui mourra avec lui.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "cupid",
+    "name": "Cupidon",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Lie deux joueurs pour la vie.",
+    "description": "La première nuit, il désigne deux joueurs qui tombent amoureux. Si l'un meurt, l'autre meurt de chagrin.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "little-girl",
+    "name": "Petite Fille",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Espionne les loups (avec risque).",
+    "description": "Pendant la nuit, au tour des loups-garous, elle peut ouvrir discrètement les yeux pour tenter de les démasquer.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "elder",
+    "name": "Ancien",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Résiste à la première attaque.",
+    "description": "Il survit à la première attaque des loups-garous. Cependant, s'il est tué par le village, les villageois perdent leurs pouvoirs.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "savior",
+    "name": "Salvateur",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Protège un joueur chaque nuit.",
+    "description": "Chaque nuit, il peut protéger un joueur contre les attaques des loups-garous. Il ne peut pas protéger la même personne deux nuits de suite.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "scapegoat",
+    "name": "Bouc Émissaire",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Meurt en cas d'égalité de votes.",
+    "description": "Si le vote du village aboutit à une égalité, le Bouc Émissaire est éliminé à la place des joueurs désignés.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "village-idiot",
+    "name": "Idiot du Village",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Survit à la condamnation mais perd son vote.",
+    "description": "S'il est éliminé par le vote du village, son innocence est révélée et il reste en vie, mais perd son droit de vote.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "wild-child",
+    "name": "Enfant Sauvage",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Devient loup si son modèle meurt.",
+    "description": "Au début de la partie, il choisit un modèle. Si son modèle meurt, il se transforme en loup-garou.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "raven",
+    "name": "Corbeau",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Ajoute 2 votes contre une cible.",
+    "description": "Chaque nuit, il peut désigner un joueur. Ce joueur aura automatiquement deux voix contre lui lors du prochain vote.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "fox",
+    "name": "Renard",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Détecte les loups dans un groupe de 3.",
+    "description": "Chaque nuit, il peut 'renifler' un joueur et ses deux voisins. S'il y a un loup parmi eux, son pouvoir ne fonctionnera plus.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "knight",
+    "name": "Chevalier à l’Épée Rouillée",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Empoisonne un loup à sa mort.",
+    "description": "S'il est tué par les loups-garous, le loup-garou à sa gauche meurt d'infection le lendemain.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "pyromaniac",
+    "name": "Pyromane",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Marque des cibles pour une mise à mort différée.",
+    "description": "Chaque nuit, il peut choisir d'asperger d'essence la maison d'un joueur. Il peut ensuite décider de tout faire flamber, tuant les joueurs aspergés.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "heir",
+    "name": "Héritier",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Prend la succession d'un rôle mort.",
+    "description": "Si la Voyante meurt, l'Héritier hérite de ses pouvoirs et devient la nouvelle Voyante.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "executioner",
+    "name": "Justicier",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Peut tuer un joueur de jour (1 fois).",
+    "description": "Une fois dans la partie, il peut choisir d'utiliser son pouvoir pour tuer un joueur de son choix pendant la journée.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "white-wolf",
+    "name": "Loup Blanc",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Tuer tous les autres (loups inclus).",
+    "description": "Son objectif est d'être le dernier survivant. Une nuit sur deux, il peut éliminer un autre loup-garou.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "pied-piper",
+    "name": "Joueur de Flûte",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Charme 2 joueurs par nuit.",
+    "description": "Chaque nuit, il charme deux joueurs. Son but est de charmer tous les joueurs vivants pour gagner seul.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "angel",
+    "name": "Ange",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Gagne s'il est tué au premier tour.",
+    "description": "Son objectif est de se faire éliminer par le vote du village dès le premier tour. S'il réussit, il gagne immédiatement.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "thief",
+    "name": "Voleur",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Choisit son rôle au début.",
+    "description": "Au début du jeu, si le nombre de rôles distribués est supérieur au nombre de joueurs, il peut choisir son rôle parmi les cartes restantes.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "survivor",
+    "name": "Survivant",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Doit rester en vie jusqu'à la fin.",
+    "description": "Son unique but est de rester en vie jusqu'à la fin de la partie. Il peut utiliser ses protections (nombre limité) la nuit.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "clown",
+    "name": "Trublion / Clown",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
+    "power": "Gagne s'il est condamné par le village.",
+    "description": "Son objectif est de se faire accuser et condamner par le village. S'il y parvient, il gagne la partie seul et le jeu s'arrête.",
+    "imagePath": null,
+    "isPremium": false
+  }
+]

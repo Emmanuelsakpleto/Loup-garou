@@ -1,0 +1,78 @@
+import { io, Socket } from 'socket.io-client';
+
+const API_BASE = 'http://localhost:5174/api';
+
+// Types pour les réponses API
+export interface CreateGameResponse {
+  gameId: string;
+  code: string;
+  hostToken: string;
+}
+
+export interface JoinGameResponse {
+  playerId: string;
+  gameId: string;
+}
+
+export interface GameResponse {
+  game: {
+    id: string;
+    code: string;
+    players: Array<{ id: string; name: string; roleId?: string }>;
+    status: string;
+    settings?: Record<string, any>;
+  };
+}
+
+// Singleton socket
+let socket: Socket | null = null;
+
+export async function createGame(hostName: string, settings?: Record<string, any>): Promise<CreateGameResponse> {
+  const res = await fetch(`${API_BASE}/create-game`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hostName, settings }),
+  });
+  if (!res.ok) throw new Error('Failed to create game');
+  return res.json();
+}
+
+export async function joinGame(code: string, pseudo: string): Promise<JoinGameResponse> {
+  const res = await fetch(`${API_BASE}/join-game`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, pseudo }),
+  });
+  if (!res.ok) throw new Error('Failed to join game');
+  return res.json();
+}
+
+export async function getGame(gameId: string): Promise<GameResponse> {
+  const res = await fetch(`${API_BASE}/game/${gameId}`);
+  if (!res.ok) throw new Error('Failed to get game');
+  return res.json();
+}
+
+export function initSocket(): Socket {
+  if (!socket) {
+    socket = io('http://localhost:5174');
+  }
+  return socket;
+}
+
+export function getSocket(): Socket | null {
+  return socket;
+}
+
+export function joinGameRoom(gameId: string) {
+  if (socket) {
+    socket.emit('join-room', { gameId });
+  }
+}
+
+export function disconnectSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+}
