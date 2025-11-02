@@ -273,46 +273,16 @@ export default function App() {
         }
         
         const gameLink = `${window.location.origin}?join=${gameState.gameCode}`;
-        // Message simple sans emoji complexe pour éviter les problèmes d'encodage
-        const invitationText = `Rejoins ma partie de Loup-Garou !\n\n` +
-            `Code : ${gameState.gameCode}\n` +
-            `Lien : ${gameLink}\n\n` +
-            `Clique sur le lien ou entre le code pour nous rejoindre !`;
+        const invitationText = `Rejoins ma partie de Loup-Garou !\n\nCode : ${gameState.gameCode}\nLien : ${gameLink}\n\nClique sur le lien ou entre le code pour nous rejoindre !`;
         
-        // 1. Essayer le Web Share API natif (fonctionne sur mobile)
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: '🐺 Partie de Loup-Garou',
-                    text: invitationText,
-                    url: gameLink,
-                });
-                console.log('✅ Partagé via Web Share API');
-                return;
-            } catch (err: any) {
-                // Si l'utilisateur annule, on continue vers les autres options
-                if (err.name === 'AbortError') {
-                    console.log('ℹ️ Partage annulé par l\'utilisateur');
-                    // Ne pas return ici, on va copier dans le presse-papiers
-                } else {
-                    console.log('ℹ️ Web Share non disponible:', err.message);
-                }
-            }
-        }
-        
-        // 2. Fallback : Copier dans le presse-papiers
         try {
             await navigator.clipboard.writeText(invitationText);
-            console.log('✅ Invitation copiée dans le presse-papiers');
+            console.log('✅ Invitation copiée');
             setShowCopied(true);
-            setTimeout(() => setShowCopied(false), 3000);
-            
-            // Afficher un message avec les options de partage
-            alert('✅ Invitation copiée !\n\nVous pouvez maintenant la coller dans WhatsApp, SMS, Email, etc.');
+            setTimeout(() => setShowCopied(false), 2000);
         } catch (err) {
-            console.error('❌ Erreur lors de la copie:', err);
-            // Fallback ultime : afficher le texte à copier manuellement
-            prompt('Copiez ce texte pour l\'envoyer à vos amis :', invitationText);
+            console.error('❌ Erreur copie invitation:', err);
+            prompt('Copiez ce texte :', invitationText);
         }
     };
 
