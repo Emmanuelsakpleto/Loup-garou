@@ -1,0 +1,5 @@
+{
+  "name": "Loup-Garou: Maître du Jeu",
+  "description": "Une application web progressive pour faciliter la distribution des rôles pour le jeu de société Loup-Garou. Le narrateur crée une partie, choisit les rôles, et les joueurs peuvent rejoindre avec un code pour recevoir secrètement leur rôle.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,470 @@
+// FIX: Corrected the React import by removing the extraneous 'a,'.
+import React, { useState, useCallback, useMemo } from 'react';
+import { GameView, type GameState, type Player, type Role, Team } from './types';
+import { ROLES } from './constants';
+import {
+  BookOpenIcon,
+  CopyIcon,
+  EyeOffIcon,
+  HomeIcon,
+  MinusIcon,
+  PlusIcon,
+  SwordsIcon,
+  UserIcon,
+  UsersIcon,
+  WerewolfIcon,
+} from './components/icons';
+
+const initialState: GameState = {
+  view: GameView.HOME,
+  isNarrator: false,
+  gameCode: null,
+  players: [],
+  selectedRoles: {},
+  currentUser: null,
+};
+
+const teamColors: Record<Team, string> = {
+    [Team.VILLAGER]: 'border-cyan-500',
+    [Team.WEREWOLF]: 'border-red-500',
+    [Team.SOLO]: 'border-slate-500',
+}
+
+const RoleCard: React.FC<{ role: Role, children?: React.ReactNode }> = ({ role, children }) => (
+    <div className={`bg-slate-800 border border-slate-700 rounded-lg p-4 text-center transform hover:scale-105 transition-transform duration-300 flex flex-col h-full border-t-4 ${teamColors[role.team]}`}>
+        <role.icon className="w-16 h-16 mx-auto mb-3 text-cyan-400" />
+        <h3 className="text-xl font-bold text-white mb-1 font-serif">{role.name}</h3>
+        <p className="text-cyan-300 text-sm font-semibold mb-2">{role.power}</p>
+        <p className="text-sm text-slate-400 mb-4 flex-grow">{role.description}</p>
+        {children}
+    </div>
+);
+
+const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+
+const groupRolesByCategory = (roles: Role[]) => {
+    return roles.reduce((acc: Record<string, Role[]>, role) => {
+        const category = role.category || 'AUTRES';
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push(role);
+        return acc;
+    }, {});
+}
+
+export default function App() {
+    const [gameState, setGameState] = useState<GameState>(initialState);
+    const [joinCode, setJoinCode] = useState('');
+    const [playerName, setPlayerName] = useState('');
+    const [narratorName, setNarratorName] = useState('Narrateur');
+    const [showCopied, setShowCopied] = useState(false);
+    const [isRoleRevealed, setIsRoleRevealed] = useState(false);
+    const [roleFilter, setRoleFilter] = useState<Team | null>(null);
+
+    const resetGame = () => {
+        setGameState(initialState);
+        setJoinCode('');
+        setPlayerName('');
+        setNarratorName('Narrateur');
+        setIsRoleRevealed(false);
+        setRoleFilter(null);
+    };
+
+    const handleCreateGame = () => {
+        setGameState(prev => ({ ...prev, view: GameView.CREATE_GAME, isNarrator: true }));
+    };
+    
+    const setView = (view: GameView) => {
+      setGameState(prev => ({...prev, view}));
+    }
+
+    const updateRoleCount = (roleId: string, delta: number) => {
+        setGameState(prev => {
+            const currentCount = prev.selectedRoles[roleId] || 0;
+            const newCount = Math.max(0, currentCount + delta);
+            return {
+                ...prev,
+                selectedRoles: {
+                    ...prev.selectedRoles,
+                    [roleId]: newCount,
+                },
+            };
+        });
+    };
+
+    const totalSelectedRoles = useMemo(() => {
+        return Object.values(gameState.selectedRoles).reduce((sum: number, count: number) => sum + count, 0);
+    }, [gameState.selectedRoles]);
+
+    const handleStartLobby = () => {
+        const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const narratorPlayer: Player = { id: 'narrator', name: narratorName };
+        setGameState(prev => ({
+            ...prev,
+            gameCode,
+            players: [narratorPlayer],
+            view: GameView.LOBBY,
+            currentUser: narratorPlayer,
+        }));
+    };
+
+    const handleJoinLobby = () => {
+        if (joinCode.trim() && playerName.trim()) {
+            const newUser: Player = { id: `player-${Date.now()}`, name: playerName };
+            setGameState(prev => ({
+                ...prev,
+                gameCode: joinCode.trim().toUpperCase(),
+                isNarrator: false,
+                players: [
+                    { id: 'narrator', name: 'Narrateur' }, 
+                    { id: 'p1', name: 'Alice'}, 
+                    { id: 'p2', name: 'Bob'},
+                    newUser
+                ],
+                currentUser: newUser,
+                view: GameView.LOBBY,
+            }));
+        }
+    };
+    
+    const addSimulatedPlayer = () => {
+      const simulatedName = `Joueur ${gameState.players.length}`;
+      const newPlayer: Player = { id: `sim-${Date.now()}`, name: simulatedName };
+      setGameState(prev => ({
+        ...prev,
+        players: [...prev.players, newPlayer],
+      }));
+    };
+
+    const assignRoles = useCallback(() => {
+        const rolesToAssign: Role[] = [];
+        for (const roleId in gameState.selectedRoles) {
+            const count = gameState.selectedRoles[roleId];
+            const role = ROLES.find(r => r.id === roleId);
+            if (role) {
+                for (let i = 0; i < count; i++) {
+                    rolesToAssign.push(role);
+                }
+            }
+        }
+
+        const shuffledRoles = shuffleArray(rolesToAssign);
+        const playersToReceiveRoles = gameState.players.filter(p => p.id !== 'narrator');
+        const shuffledPlayers = shuffleArray(playersToReceiveRoles);
+
+        const updatedPlayers = gameState.players.map(player => {
+            if (player.id === 'narrator') return player;
+            const playerIndex = shuffledPlayers.findIndex((p: Player) => p.id === player.id);
+            if (playerIndex !== -1 && playerIndex < shuffledRoles.length) {
+                return { ...player, role: shuffledRoles[playerIndex] };
+            }
+            return player;
+        });
+
+        setIsRoleRevealed(false);
+        setGameState(prev => ({ ...prev, players: updatedPlayers, view: GameView.ROLE_REVEAL }));
+    }, [gameState.players, gameState.selectedRoles]);
+
+    const handleShare = async () => {
+        if(!gameState.gameCode) return;
+        const gameLink = `${window.location.origin}#join=${gameState.gameCode}`;
+        const shareData = {
+            title: 'Rejoins ma partie de Loup-Garou !',
+            text: `Rejoins ma partie de Loup-Garou ! \nCode : ${gameState.gameCode}`,
+            url: gameLink,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                return;
+            } catch (err) {
+                console.error("Erreur de partage : ", err);
+            }
+        }
+        
+        const textToCopy = `Rejoins ma partie de Loup-Garou ! \nCode : ${gameState.gameCode}\nLien : ${gameLink}`;
+        navigator.clipboard.writeText(textToCopy);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
+    };
+    
+    const filteredRoles = useMemo(() => {
+        if (!roleFilter) return ROLES;
+        return ROLES.filter(r => r.team === roleFilter);
+    }, [roleFilter]);
+
+    const renderView = () => {
+        switch (gameState.view) {
+            case GameView.HOME:
+                return (
+                    <div className="text-center">
+                        <div className="mb-12">
+                            <WerewolfIcon className="w-24 h-24 mx-auto text-red-500" />
+                            <h1 className="text-4xl md:text-5xl font-bold font-serif mt-4 text-white">Loup-Garou</h1>
+                            <p className="text-slate-400 mt-2">Le village s'endort...</p>
+                        </div>
+                        <div className="space-y-4 max-w-sm mx-auto">
+                            <button onClick={handleCreateGame} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-transform transform hover:scale-105">
+                                Créer une partie
+                            </button>
+                            <div className="relative flex py-3 items-center">
+                                <div className="flex-grow border-t border-slate-600"></div>
+                                <span className="flex-shrink mx-4 text-slate-400">ou</span>
+                                <div className="flex-grow border-t border-slate-600"></div>
+                            </div>
+                            <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                                <input
+                                    type="text"
+                                    placeholder="Nom du joueur"
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 mb-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Code de la partie"
+                                    value={joinCode}
+                                    onChange={(e) => setJoinCode(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 mb-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                />
+                                <button onClick={handleJoinLobby} disabled={!joinCode.trim() || !playerName.trim()} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
+                                    Rejoindre une partie
+                                </button>
+                            </div>
+                             <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className="w-full text-cyan-400 hover:text-cyan-300 font-bold py-3 px-4 rounded-lg transition-colors">
+                                Consulter les rôles
+                            </button>
+                        </div>
+                    </div>
+                );
+            case GameView.CREATE_GAME:
+                const groupedRoles = groupRolesByCategory(ROLES);
+                return (
+                    <div className="pb-24">
+                        <h2 className="text-3xl font-bold text-center mb-2 font-serif">Configuration de la Partie</h2>
+                        <p className="text-slate-400 text-center mb-8">Choisissez les rôles pour votre partie.</p>
+                        <div className="mb-6 bg-slate-800 p-4 rounded-lg border border-slate-700">
+                           <label htmlFor="narratorName" className="block text-sm font-medium text-slate-300 mb-2">Votre nom (Narrateur)</label>
+                            <input
+                                id="narratorName"
+                                type="text"
+                                value={narratorName}
+                                onChange={(e) => setNarratorName(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                        <div className="space-y-8">
+                            {Object.entries(groupedRoles).map(([category, roles]) => (
+                                <div key={category}>
+                                    <h3 className="text-2xl font-serif text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {roles.map(role => (
+                                            <div key={role.id} className={`bg-slate-800 border border-slate-700 rounded-lg p-4 flex flex-col items-center border-t-4 ${teamColors[role.team]}`}>
+                                                <role.icon className="w-12 h-12 mx-auto mb-2 text-cyan-400" />
+                                                <h3 className="text-lg font-bold text-white text-center">{role.name}</h3>
+                                                <p className="text-cyan-300 text-xs font-semibold mb-3 text-center">{role.power}</p>
+                                                <div className="flex items-center space-x-4 mt-auto">
+                                                    <button onClick={() => updateRoleCount(role.id, -1)} className="bg-slate-700 p-2 rounded-full hover:bg-slate-600 transition-colors"><MinusIcon className="w-5 h-5"/></button>
+                                                    <span className="text-2xl font-bold w-10 text-center">{gameState.selectedRoles[role.id] || 0}</span>
+                                                    <button onClick={() => updateRoleCount(role.id, 1)} className="bg-slate-700 p-2 rounded-full hover:bg-slate-600 transition-colors"><PlusIcon className="w-5 h-5"/></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm p-4 border-t border-slate-700">
+                            <div className="max-w-4xl mx-auto flex justify-between items-center">
+                                <div className="flex items-center space-x-2">
+                                    <UsersIcon className="w-6 h-6 text-slate-400" />
+                                    <span className="text-xl font-bold">{totalSelectedRoles} Rôles</span>
+                                </div>
+                                <button onClick={handleStartLobby} disabled={totalSelectedRoles === 0} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 disabled:bg-slate-700 disabled:cursor-not-allowed">
+                                    Créer le Salon
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case GameView.LOBBY:
+                 const canStartGame = gameState.players.length -1 === totalSelectedRoles;
+                return (
+                    <div className="max-w-md mx-auto text-center pb-24">
+                        <h2 className="text-3xl font-bold font-serif mb-4">Salon de la Partie</h2>
+                        {gameState.isNarrator && gameState.gameCode && (
+                          <div className="mb-6">
+                            <p className="text-slate-400 mb-2">Partagez ce code avec vos joueurs :</p>
+                            <div className="flex justify-center">
+                              <div className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-3 flex items-center space-x-4">
+                                  <span className="text-3xl font-mono tracking-widest text-cyan-400">{gameState.gameCode}</span>
+                                  <button onClick={handleShare} className="bg-slate-700 p-2 rounded-lg hover:bg-slate-600 transition-colors">
+                                      <CopyIcon className="w-6 h-6"/>
+                                  </button>
+                              </div>
+                            </div>
+                            {showCopied && <p className="text-green-400 text-sm mt-2 transition-opacity">Copié dans le presse-papiers !</p>}
+                          </div>
+                        )}
+                        {!gameState.isNarrator && (
+                            <p className="text-slate-400 mb-6">En attente du démarrage de la partie par le narrateur...</p>
+                        )}
+                        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                            <h3 className="text-xl font-bold mb-4 flex items-center justify-center space-x-2">
+                                <UsersIcon className="w-6 h-6"/>
+                                <span>Joueurs ({gameState.players.length})</span>
+                            </h3>
+                            <ul className="space-y-3 text-left">
+                                {gameState.players.map(player => (
+                                    <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3">
+                                        <UserIcon className="w-6 h-6 text-slate-400"/>
+                                        <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
+                                        {player.id === 'narrator' && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Narrateur</span>}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        {gameState.isNarrator && (
+                          <div className="mt-6 space-y-3">
+                            <button onClick={addSimulatedPlayer} className="w-full border-2 border-cyan-600 hover:bg-cyan-600/20 text-cyan-400 font-bold py-3 px-4 rounded-lg transition-colors">
+                                Ajouter un joueur (simulation)
+                            </button>
+                             <button onClick={assignRoles} disabled={!canStartGame} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
+                                {canStartGame ? "Distribuer les Rôles" : `Ajoutez ${totalSelectedRoles - (gameState.players.length - 1)} joueur(s)`}
+                            </button>
+                          </div>  
+                        )}
+                    </div>
+                );
+            case GameView.ROLE_REVEAL:
+                const myRole = gameState.currentUser?.id ? gameState.players.find(p => p.id === gameState.currentUser!.id)?.role : null;
+                return (
+                    <div className="max-w-md mx-auto text-center pb-24">
+                         <h2 className="text-3xl font-bold font-serif mb-2">Votre Rôle est...</h2>
+                         <p className="text-slate-400 mb-8">Gardez-le secret !</p>
+                         {myRole ? (
+                             !isRoleRevealed ? (
+                                 <div 
+                                     onClick={() => setIsRoleRevealed(true)}
+                                     className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-4 text-center cursor-pointer transform hover:scale-105 transition-transform duration-300 flex flex-col items-center justify-center min-h-[320px]"
+                                 >
+                                     <EyeOffIcon className="w-20 h-20 mx-auto mb-4 text-slate-500" />
+                                     <h3 className="text-2xl font-bold text-white mb-2 font-serif">Rôle Caché</h3>
+                                     <p className="text-slate-400">Cliquez pour Révéler</p>
+                                 </div>
+                             ) : (
+                                 <RoleCard role={myRole}/>
+                             )
+                         ) : <p>Attente d'attribution...</p>}
+                    </div>
+                );
+            case GameView.PLAYERS_LIST:
+                 return (
+                    <div className="max-w-4xl mx-auto pb-24">
+                         <h2 className="text-3xl font-bold text-center mb-6 font-serif">Liste des Joueurs</h2>
+                         {gameState.isNarrator ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                    <div key={player.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                                        <h3 className="text-xl font-bold text-white mb-2">{player.name}</h3>
+                                        {player.role ? (
+                                            <>
+                                                <player.role.icon className="w-12 h-12 mx-auto my-3 text-cyan-400" />
+                                                <p className="text-lg font-semibold text-cyan-300">{player.role.name}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-slate-500">Aucun rôle</p>
+                                        )}
+                                    </div>
+                                ))}
+                             </div>
+                         ) : (
+                             <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 max-w-md mx-auto">
+                                <ul className="space-y-3 text-left">
+                                    {gameState.players.map(player => (
+                                        <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3">
+                                            <UserIcon className="w-6 h-6 text-slate-400"/>
+                                            <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
+                                            {player.id === 'narrator' && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Narrateur</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                         )}
+                    </div>
+                )
+            case GameView.ROLE_DIRECTORY:
+                const groupedFilteredRoles = groupRolesByCategory(filteredRoles);
+                return (
+                    <div className="max-w-4xl mx-auto pb-24">
+                        <h2 className="text-3xl font-bold text-center mb-4 font-serif">Guide des Rôles</h2>
+                        <div className="flex justify-center gap-2 mb-8">
+                            <button onClick={() => setRoleFilter(null)} className={`px-4 py-2 rounded-full text-sm font-semibold ${!roleFilter ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Tous</button>
+                            <button onClick={() => setRoleFilter(Team.VILLAGER)} className={`px-4 py-2 rounded-full text-sm font-semibold ${roleFilter === Team.VILLAGER ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Villageois</button>
+                            <button onClick={() => setRoleFilter(Team.WEREWOLF)} className={`px-4 py-2 rounded-full text-sm font-semibold ${roleFilter === Team.WEREWOLF ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Loups-Garous</button>
+                            <button onClick={() => setRoleFilter(Team.SOLO)} className={`px-4 py-2 rounded-full text-sm font-semibold ${roleFilter === Team.SOLO ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Solitaires</button>
+                        </div>
+
+                        <div className="space-y-8">
+                           {Object.entries(groupedFilteredRoles).map(([category, roles]) => (
+                                <div key={category}>
+                                    <h3 className="text-2xl font-serif text-cyan-400 border-b-2 border-cyan-800 pb-2 mb-6">{category}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {roles.map(role => <RoleCard key={role.id} role={role} />)}
+                                    </div>
+                                </div>
+                           ))}
+                        </div>
+                    </div>
+                );
+            default:
+                return <p>Erreur: Vue inconnue</p>;
+        }
+    };
+    
+    const isGameScreen = ![GameView.HOME, GameView.CREATE_GAME].includes(gameState.view);
+
+    return (
+        <div className="min-h-screen text-gray-200 p-4 sm:p-6">
+            <div className="max-w-5xl mx-auto">
+                 {gameState.view !== GameView.HOME && (
+                    <header className="mb-8">
+                        <button onClick={resetGame} className="flex items-center space-x-2 text-slate-400 hover:text-white transition-colors">
+                            <HomeIcon className="w-6 h-6" />
+                            <span>Accueil</span>
+                        </button>
+                    </header>
+                )}
+                <main>
+                    {renderView()}
+                </main>
+
+                {isGameScreen && (
+                  <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-sm border-t border-slate-700 flex justify-around">
+                      <button onClick={() => setView(gameState.isNarrator ? GameView.LOBBY : GameView.ROLE_REVEAL)} className={`flex flex-col items-center p-3 transition-colors ${[GameView.LOBBY, GameView.ROLE_REVEAL].includes(gameState.view) ? 'text-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>
+                          <SwordsIcon className="w-6 h-6 mb-1"/>
+                          <span className="text-xs font-medium">Partie</span>
+                      </button>
+                      <button onClick={() => setView(GameView.PLAYERS_LIST)} className={`flex flex-col items-center p-3 transition-colors ${gameState.view === GameView.PLAYERS_LIST ? 'text-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>
+                          <UsersIcon className="w-6 h-6 mb-1"/>
+                          <span className="text-xs font-medium">Joueurs</span>
+                      </button>
+                      <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className={`flex flex-col items-center p-3 transition-colors ${gameState.view === GameView.ROLE_DIRECTORY ? 'text-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>
+                          <BookOpenIcon className="w-6 h-6 mb-1"/>
+                          <span className="text-xs font-medium">Rôles</span>
+                      </button>
+                  </nav>
+                )}
+            </div>
+        </div>
+    );
+}
