@@ -1,5 +1,5 @@
 {
-  "name": "loup-garou:-maître-du-jeu",
+  "name": "loup-garou-maitre-du-jeu",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -16,7 +16,10 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
     "typescript": "~5.8.2",
+    "tailwindcss": "^3.4.14",
     "vite": "^6.2.0"
   }
 }

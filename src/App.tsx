@@ -592,7 +592,7 @@ export default function App() {
                              ) : (
                                  <RoleCard role={myRole}/>
                              )
-                         ) : <p>Attente d'attribution...</p>}
+                         ) : <p className="text-slate-400 font-typewriter">Le narrateur n'a pas encore distribué les rôles.</p>}
                     </div>
                 );
             case GameView.PLAYERS_LIST:
