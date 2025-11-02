@@ -10,6 +10,8 @@ const API_BASE = sanitizedApiBase.endsWith('/api')
 const envSocketUrl = (import.meta.env.VITE_SOCKET_URL ?? '').trim();
 const SOCKET_URL = (envSocketUrl.length > 0 ? envSocketUrl : 'http://localhost:5174').replace(/\/$/, '');
 
+console.info('[API config]', { API_BASE, SOCKET_URL });
+
 // Types pour les réponses API
 export interface CreateGameResponse {
   gameId: string;
