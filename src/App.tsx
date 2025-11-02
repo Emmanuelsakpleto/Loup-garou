@@ -2,24 +2,30 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameView, type GameState, type Player, type Role, Team } from './types';
 import { ROLES } from './constants';
-import { createGame, joinGame, getGame, initSocket, joinGameRoom, getSocket } from './services/api';
+import { createGame, joinGame, getGame, assignRoles as assignRolesAPI, initSocket, joinGameRoom, getSocket } from './services/api';
 import {
   BookOpenIcon,
+  ClipboardIcon,
   CopyIcon,
+  EmailIcon,
   EyeOffIcon,
   HomeIcon,
   MinusIcon,
   PlusIcon,
+  SMSIcon,
   SwordsIcon,
   UserIcon,
   UsersIcon,
   WerewolfIcon,
+  WhatsAppIcon,
 } from './components/icons';
 
 const initialState: GameState = {
   view: GameView.HOME,
   isNarrator: false,
   gameCode: null,
+  gameId: null,
+  hostToken: null,
   players: [],
   selectedRoles: {},
   currentUser: null,
@@ -98,10 +104,29 @@ export default function App() {
             // TODO: synchroniser l'état du jeu avec les données du serveur
         });
 
+        // Écouter l'attribution des rôles
+        socket.on('roles-assigned', (data: { players: Array<{ id: string; name: string; roleId?: string }> }) => {
+            console.log('🎭 Rôles attribués reçus via Socket.IO:', data);
+            setGameState(prev => {
+                // Mettre à jour les joueurs avec leurs rôles
+                const updatedPlayers = data.players.map(p => {
+                    const role = p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined;
+                    return { id: p.id, name: p.name, role };
+                });
+                return {
+                    ...prev,
+                    players: updatedPlayers,
+                    view: GameView.ROLE_REVEAL,
+                };
+            });
+            setIsRoleRevealed(false);
+        });
+
         // Nettoyage à la destruction du composant
         return () => {
             socket.off('player-joined');
             socket.off('game-updated');
+            socket.off('roles-assigned');
         };
     }, []);
 
@@ -157,6 +182,8 @@ export default function App() {
             setGameState(prev => ({
                 ...prev,
                 gameCode: result.code,
+                gameId: result.gameId,
+                hostToken: result.hostToken,
                 players: gameData.game.players.map(p => ({ id: p.id, name: p.name })),
                 view: GameView.LOBBY,
                 currentUser: narratorPlayer,
@@ -188,6 +215,8 @@ export default function App() {
                 setGameState(prev => ({
                     ...prev,
                     gameCode: joinCode.trim().toUpperCase(),
+                    gameId: result.gameId,
+                    hostToken: null,
                     isNarrator: false,
                     currentUser: newUser,
                     view: GameView.LOBBY,
@@ -198,9 +227,15 @@ export default function App() {
                 // Rejoindre la room Socket.IO (le socket est déjà initialisé)
                 joinGameRoom(result.gameId);
                 console.log('🎮 Room rejointe:', result.gameId);
-            } catch (error) {
+            } catch (error: any) {
                 console.error('❌ Erreur lors de la connexion au jeu:', error);
-                alert('Impossible de rejoindre le jeu. Vérifiez le code et que le backend est bien lancé.');
+                
+                // Gérer l'erreur "partie pleine"
+                if (error.message?.includes('game is full')) {
+                    alert('❌ Cette partie est complète ! Le nombre maximum de joueurs est atteint.');
+                } else {
+                    alert('Impossible de rejoindre le jeu. Vérifiez le code et que le backend est bien lancé.');
+                }
             }
         }
     };
@@ -214,34 +249,22 @@ export default function App() {
       }));
     };
 
-    const assignRoles = useCallback(() => {
-        const rolesToAssign: Role[] = [];
-        for (const roleId in gameState.selectedRoles) {
-            const count = gameState.selectedRoles[roleId];
-            const role = ROLES.find(r => r.id === roleId);
-            if (role) {
-                for (let i = 0; i < count; i++) {
-                    rolesToAssign.push(role);
-                }
-            }
+    const assignRoles = useCallback(async () => {
+        if (!gameState.gameId || !gameState.hostToken) {
+            console.error('❌ Impossible d\'assigner les rôles : gameId ou hostToken manquant');
+            return;
         }
 
-        const shuffledRoles = shuffleArray(rolesToAssign);
-        const playersToReceiveRoles = gameState.players.filter(p => p.id !== 'narrator');
-        const shuffledPlayers = shuffleArray(playersToReceiveRoles);
-
-        const updatedPlayers = gameState.players.map(player => {
-            if (player.id === 'narrator') return player;
-            const playerIndex = shuffledPlayers.findIndex((p: Player) => p.id === player.id);
-            if (playerIndex !== -1 && playerIndex < shuffledRoles.length) {
-                return { ...player, role: shuffledRoles[playerIndex] };
-            }
-            return player;
-        });
-
-        setIsRoleRevealed(false);
-        setGameState(prev => ({ ...prev, players: updatedPlayers, view: GameView.ROLE_REVEAL }));
-    }, [gameState.players, gameState.selectedRoles]);
+        try {
+            console.log('🎭 Demande d\'attribution des rôles...');
+            await assignRolesAPI(gameState.gameId, gameState.hostToken, gameState.selectedRoles);
+            console.log('✅ Demande envoyée, en attente de la réponse via Socket.IO...');
+            // L'événement 'roles-assigned' sera reçu via Socket.IO et mettra à jour l'état
+        } catch (error) {
+            console.error('❌ Erreur lors de l\'attribution des rôles:', error);
+            alert('Impossible d\'attribuer les rôles. Vérifiez que le backend est bien lancé.');
+        }
+    }, [gameState.gameId, gameState.hostToken, gameState.selectedRoles]);
 
     const handleShare = async () => {
         if(!gameState.gameCode) {
@@ -249,37 +272,85 @@ export default function App() {
             return;
         }
         
-        const gameLink = `${window.location.origin}#join=${gameState.gameCode}`;
-        const shareData = {
-            title: 'Rejoins ma partie de Loup-Garou !',
-            text: `Rejoins ma partie de Loup-Garou ! \nCode : ${gameState.gameCode}`,
-            url: gameLink,
-        };
-
-        // Essayer d'abord le Web Share API
+        const gameLink = `${window.location.origin}?join=${gameState.gameCode}`;
+        // Message simple sans emoji complexe pour éviter les problèmes d'encodage
+        const invitationText = `Rejoins ma partie de Loup-Garou !\n\n` +
+            `Code : ${gameState.gameCode}\n` +
+            `Lien : ${gameLink}\n\n` +
+            `Clique sur le lien ou entre le code pour nous rejoindre !`;
+        
+        // 1. Essayer le Web Share API natif (fonctionne sur mobile)
         if (navigator.share) {
             try {
-                await navigator.share(shareData);
+                await navigator.share({
+                    title: '🐺 Partie de Loup-Garou',
+                    text: invitationText,
+                    url: gameLink,
+                });
                 console.log('✅ Partagé via Web Share API');
                 return;
-            } catch (err) {
-                console.log('ℹ️ Web Share annulé ou non disponible:', err);
+            } catch (err: any) {
+                // Si l'utilisateur annule, on continue vers les autres options
+                if (err.name === 'AbortError') {
+                    console.log('ℹ️ Partage annulé par l\'utilisateur');
+                    // Ne pas return ici, on va copier dans le presse-papiers
+                } else {
+                    console.log('ℹ️ Web Share non disponible:', err.message);
+                }
             }
         }
         
-        // Fallback : copier dans le presse-papiers
-        const textToCopy = `Rejoins ma partie de Loup-Garou ! \nCode : ${gameState.gameCode}\nLien : ${gameLink}`;
+        // 2. Fallback : Copier dans le presse-papiers
+        try {
+            await navigator.clipboard.writeText(invitationText);
+            console.log('✅ Invitation copiée dans le presse-papiers');
+            setShowCopied(true);
+            setTimeout(() => setShowCopied(false), 3000);
+            
+            // Afficher un message avec les options de partage
+            alert('✅ Invitation copiée !\n\nVous pouvez maintenant la coller dans WhatsApp, SMS, Email, etc.');
+        } catch (err) {
+            console.error('❌ Erreur lors de la copie:', err);
+            // Fallback ultime : afficher le texte à copier manuellement
+            prompt('Copiez ce texte pour l\'envoyer à vos amis :', invitationText);
+        }
+    };
+
+    const handleCopyCode = async () => {
+        if(!gameState.gameCode) return;
         
         try {
-            await navigator.clipboard.writeText(textToCopy);
-            console.log('✅ Code copié dans le presse-papiers');
+            await navigator.clipboard.writeText(gameState.gameCode);
+            console.log('✅ Code copié');
             setShowCopied(true);
             setTimeout(() => setShowCopied(false), 2000);
         } catch (err) {
-            console.error('❌ Erreur lors de la copie:', err);
-            // Fallback ultime : sélection manuelle
-            alert(`Code de la partie : ${gameState.gameCode}`);
+            console.error('❌ Erreur copie code:', err);
+            prompt('Copiez ce code :', gameState.gameCode);
         }
+    };
+
+    const handleShareWhatsApp = () => {
+        if(!gameState.gameCode) return;
+        const gameLink = `${window.location.origin}?join=${gameState.gameCode}`;
+        // Message sans emoji pour éviter les problèmes d'encodage
+        const text = encodeURIComponent(`Rejoins ma partie de Loup-Garou !\n\nCode : ${gameState.gameCode}\nLien : ${gameLink}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    };
+
+    const handleShareSMS = () => {
+        if(!gameState.gameCode) return;
+        const gameLink = `${window.location.origin}?join=${gameState.gameCode}`;
+        const text = encodeURIComponent(`Rejoins ma partie de Loup-Garou !\n\nCode : ${gameState.gameCode}\nLien : ${gameLink}`);
+        window.location.href = `sms:?body=${text}`;
+    };
+
+    const handleShareEmail = () => {
+        if(!gameState.gameCode) return;
+        const gameLink = `${window.location.origin}?join=${gameState.gameCode}`;
+        const subject = encodeURIComponent('Rejoins ma partie de Loup-Garou !');
+        const body = encodeURIComponent(`Salut !\n\nJe t'invite à rejoindre ma partie de Loup-Garou !\n\nCode : ${gameState.gameCode}\nLien : ${gameLink}\n\nClique sur le lien ou entre le code pour nous rejoindre !`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
     };
     
     const filteredRoles = useMemo(() => {
@@ -388,16 +459,52 @@ export default function App() {
                         <h2 className="text-3xl font-bold font-serif mb-4">Salon de la Partie</h2>
                         {gameState.isNarrator && gameState.gameCode && (
                           <div className="mb-6">
-                            <p className="text-slate-400 mb-2">Partagez ce code avec vos joueurs :</p>
-                            <div className="flex justify-center">
-                              <div className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-3 flex items-center space-x-4">
-                                  <span className="text-3xl font-mono tracking-widest text-cyan-400">{gameState.gameCode}</span>
-                                  <button onClick={handleShare} className="bg-slate-700 p-2 rounded-lg hover:bg-slate-600 transition-colors">
-                                      <CopyIcon className="w-6 h-6"/>
-                                  </button>
-                              </div>
+                            <p className="text-slate-400 mb-2">Code de la partie :</p>
+                            <div className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-4 mb-4">
+                                <span className="text-4xl font-mono tracking-widest text-cyan-400 block">{gameState.gameCode}</span>
+                                <button 
+                                    onClick={handleCopyCode} 
+                                    className="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                                >
+                                    <CopyIcon className="w-5 h-5"/>
+                                    <span>Copier le code</span>
+                                </button>
                             </div>
-                            {showCopied && <p className="text-green-400 text-sm mt-2 transition-opacity">Copié dans le presse-papiers !</p>}
+                            
+                            <div className="bg-slate-800 border border-slate-600 rounded-lg p-4 mb-3">
+                                <p className="text-slate-300 font-semibold mb-3 text-sm">📤 Inviter des joueurs</p>
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                    <button 
+                                        onClick={handleShareWhatsApp}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                    >
+                                        <WhatsAppIcon className="w-5 h-5"/>
+                                        <span>WhatsApp</span>
+                                    </button>
+                                    <button 
+                                        onClick={handleShareSMS}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                    >
+                                        <SMSIcon className="w-5 h-5"/>
+                                        <span>SMS</span>
+                                    </button>
+                                    <button 
+                                        onClick={handleShareEmail}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                    >
+                                        <EmailIcon className="w-5 h-5"/>
+                                        <span>Email</span>
+                                    </button>
+                                    <button 
+                                        onClick={handleShare}
+                                        className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                    >
+                                        <ClipboardIcon className="w-5 h-5"/>
+                                        <span>Copier</span>
+                                    </button>
+                                </div>
+                                {showCopied && <p className="text-green-400 text-sm text-center animate-pulse">✅ Copié dans le presse-papiers !</p>}
+                            </div>
                           </div>
                         )}
                         {!gameState.isNarrator && (

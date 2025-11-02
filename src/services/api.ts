@@ -43,13 +43,26 @@ export async function joinGame(code: string, pseudo: string): Promise<JoinGameRe
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, pseudo }),
   });
-  if (!res.ok) throw new Error('Failed to join game');
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || 'Failed to join game');
+  }
   return res.json();
 }
 
 export async function getGame(gameId: string): Promise<GameResponse> {
   const res = await fetch(`${API_BASE}/game/${gameId}`);
   if (!res.ok) throw new Error('Failed to get game');
+  return res.json();
+}
+
+export async function assignRoles(gameId: string, hostToken: string, selectedRoles: Record<string, number>): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/game/${gameId}/assign-roles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hostToken, selectedRoles }),
+  });
+  if (!res.ok) throw new Error('Failed to assign roles');
   return res.json();
 }
 

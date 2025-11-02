@@ -35,6 +35,8 @@ export interface GameState {
   view: GameView;
   isNarrator: boolean;
   gameCode: string | null;
+  gameId: string | null;
+  hostToken: string | null;
   players: Player[];
   selectedRoles: { [roleId: string]: number };
   currentUser: Player | null;
