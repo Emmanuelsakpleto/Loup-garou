@@ -1,6 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 
-const API_BASE = 'http://localhost:5174/api';
+const rawApiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5174';
+const API_BASE = rawApiBase.endsWith('/api')
+  ? rawApiBase.replace(/\/$/, '')
+  : `${rawApiBase.replace(/\/$/, '')}/api`;
+const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:5174').replace(/\/$/, '');
 
 // Types pour les réponses API
 export interface CreateGameResponse {
@@ -68,7 +72,7 @@ export async function assignRoles(gameId: string, hostToken: string, selectedRol
 
 export function initSocket(): Socket {
   if (!socket) {
-    socket = io('http://localhost:5174', {
+    socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
     });
     
