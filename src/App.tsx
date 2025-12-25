@@ -128,9 +128,16 @@ export default function App() {
                     const role = p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined;
                     return { id: p.id, name: p.name, role };
                 });
+                
+                // Mettre à jour le currentUser avec son rôle
+                const currentPlayerData = data.players.find(p => p.id === prev.currentUser?.id);
+                const currentUserRole = currentPlayerData?.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined;
+                const updatedCurrentUser = prev.currentUser ? { ...prev.currentUser, role: currentUserRole } : null;
+                
                 return {
                     ...prev,
                     players: updatedPlayers,
+                    currentUser: updatedCurrentUser,
                     view: GameView.ROLE_REVEAL,
                 };
             });
@@ -571,7 +578,8 @@ export default function App() {
                     </div>
                 );
             case GameView.ROLE_REVEAL:
-                const myRole = gameState.currentUser?.id ? gameState.players.find(p => p.id === gameState.currentUser!.id)?.role : null;
+                const myRole = gameState.currentUser?.role || null;
+                
                 return (
                     <div className="max-w-md mx-auto text-center pb-24">
                          <div className="mb-6">
@@ -592,7 +600,12 @@ export default function App() {
                              ) : (
                                  <RoleCard role={myRole}/>
                              )
-                         ) : <p className="text-slate-400 font-typewriter">Le narrateur n'a pas encore distribué les rôles.</p>}
+                         ) : (
+                             <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
+                                 <p className="text-slate-400 font-typewriter mb-4">Le narrateur n'a pas encore distribué les rôles.</p>
+                                 <p className="text-slate-500 text-sm">En attente...</p>
+                             </div>
+                         )}
                     </div>
                 );
             case GameView.PLAYERS_LIST:
