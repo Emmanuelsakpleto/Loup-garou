@@ -28,7 +28,7 @@ export interface GameResponse {
   game: {
     id: string;
     code: string;
-    players: Array<{ id: string; name: string; roleId?: string }>;
+    players: Array<{ id: string; name: string; roleId?: string; isAlive?: boolean }>;
     status: string;
     settings?: Record<string, any>;
   };

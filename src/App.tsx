@@ -306,7 +306,7 @@ export default function App() {
         });
 
         // Écouter l'attribution des rôles
-        socket.on('roles-assigned', (data: { players: Array<{ id: string; name: string; roleId?: string }> }) => {
+        socket.on('roles-assigned', (data: { players: Array<{ id: string; name: string; roleId?: string; isAlive?: boolean }> }) => {
             console.log('🎭 Rôles attribués reçus via Socket.IO:', data);
             setIsLoading(false);
             setLoadingMessage('');
@@ -314,13 +314,22 @@ export default function App() {
                 // Mettre à jour les joueurs avec leurs rôles
                 const updatedPlayers = data.players.map(p => {
                     const role = p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined;
-                    return { id: p.id, name: p.name, role };
+                    return { 
+                        id: p.id, 
+                        name: p.name, 
+                        role,
+                        isAlive: p.isAlive !== false
+                    };
                 });
                 
                 // Mettre à jour le currentUser avec son rôle
                 const currentPlayerData = data.players.find(p => p.id === prev.currentUser?.id);
                 const currentUserRole = currentPlayerData?.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined;
-                const updatedCurrentUser = prev.currentUser ? { ...prev.currentUser, role: currentUserRole } : null;
+                const updatedCurrentUser = prev.currentUser ? { 
+                    ...prev.currentUser, 
+                    role: currentUserRole,
+                    isAlive: currentPlayerData?.isAlive !== false
+                } : null;
                 
                 return {
                     ...prev,
