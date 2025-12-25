@@ -118,6 +118,12 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const pseudoInputRef = useRef<HTMLInputElement>(null);
+    const gameStateRef = useRef(gameState);
+
+    // Garder le ref à jour avec le state
+    useEffect(() => {
+        gameStateRef.current = gameState;
+    }, [gameState]);
 
     // Récupérer le code de la partie depuis l'URL si présent
     useEffect(() => {
@@ -214,17 +220,17 @@ export default function App() {
 
         const onConnect = () => {
             console.log('🔌 Socket connecté, vérification de la room...');
-            if (gameState.gameId) {
-                console.log('🎮 Rejoint la room:', gameState.gameId);
-                joinGameRoom(gameState.gameId);
+            if (gameStateRef.current.gameId) {
+                console.log('🎮 Rejoint la room:', gameStateRef.current.gameId);
+                joinGameRoom(gameStateRef.current.gameId);
             }
         };
 
         socket.on('connect', onConnect);
 
         // Si déjà connecté au montage
-        if (socket.connected && gameState.gameId) {
-            joinGameRoom(gameState.gameId);
+        if (socket.connected && gameStateRef.current.gameId) {
+            joinGameRoom(gameStateRef.current.gameId);
         }
 
         // Écouter l'arrivée d'un nouveau joueur
@@ -245,9 +251,25 @@ export default function App() {
         });
 
         // Écouter les mises à jour de l'état du jeu
-        socket.on('game-updated', (data: any) => {
-            console.log('🔄 Mise à jour du jeu:', data);
-            // TODO: synchroniser l'état du jeu avec les données du serveur
+        socket.on('game-state-updated', (data: any) => {
+            console.log('🔄 État du jeu synchronisé reçu:', data);
+            setGameState(prev => ({
+                ...prev,
+                players: data.players || prev.players,
+                // On peut ajouter d'autres champs à synchroniser ici
+            }));
+        });
+
+        // Le narrateur renvoie l'état actuel quand un nouveau socket se connecte
+        socket.on('player-connected', () => {
+            const state = gameStateRef.current;
+            if (state.isNarrator && state.gameId) {
+                console.log('📢 Nouveau socket détecté, renvoi de l\'état actuel...');
+                socket.emit('sync-game-state', {
+                    gameId: state.gameId,
+                    gameState: { players: state.players }
+                });
+            }
         });
 
         // Écouter l'attribution des rôles
@@ -280,7 +302,8 @@ export default function App() {
         // Nettoyage à la destruction du composant
         return () => {
             socket.off('player-joined');
-            socket.off('game-updated');
+            socket.off('game-state-updated');
+            socket.off('player-connected');
             socket.off('roles-assigned');
         };
     }, []);
@@ -292,6 +315,30 @@ export default function App() {
     const setView = (view: GameView) => {
       setGameState(prev => ({...prev, view}));
     }
+
+    const togglePlayerLife = (playerId: string) => {
+        setGameState(prev => {
+            const newState = {
+                ...prev,
+                players: prev.players.map(p => 
+                    p.id === playerId ? { ...p, isAlive: p.isAlive === false ? true : false } : p
+                )
+            };
+            
+            // Émettre la mise à jour via Socket.IO si on est narrateur
+            if (prev.isNarrator && prev.gameId) {
+                const socket = getSocket();
+                if (socket) {
+                    socket.emit('sync-game-state', {
+                        gameId: prev.gameId,
+                        gameState: { players: newState.players }
+                    });
+                }
+            }
+            
+            return newState;
+        });
+    };
 
     const updateRoleCount = (roleId: string, delta: number) => {
         setGameState(prev => {
@@ -574,7 +621,7 @@ export default function App() {
                         </div>
                         <p className="text-slate-400 text-center mb-8 text-lg font-typewriter">Choisissez les rôles pour votre partie</p>
                         <div className="mb-8 bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700 shadow-xl">
-                           <label htmlFor="narratorName" className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Ton nom de Narrateur</label>
+                           <label htmlFor="narratorName" className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Ton pseudo de Narrateur</label>
                             <div className="relative">
                                 <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-500/50" />
                                 <input
@@ -845,12 +892,21 @@ export default function App() {
                          {gameState.isNarrator ? (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {gameState.players.filter(p => p.id !== 'narrator').map(player => (
-                                    <div key={player.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                                        <h3 className="text-xl font-bold text-white mb-2">{player.name}</h3>
+                                    <div key={player.id} className={`bg-slate-800 border ${player.isAlive === false ? 'border-red-900/50 opacity-60' : 'border-slate-700'} rounded-lg p-4 text-center transition-all`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className={`w-3 h-3 rounded-full ${player.isAlive === false ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.6)]' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'}`}></div>
+                                            <button 
+                                                onClick={() => togglePlayerLife(player.id)}
+                                                className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${player.isAlive === false ? 'bg-green-900/20 text-green-400 border-green-800' : 'bg-red-900/20 text-red-400 border-red-800'}`}
+                                            >
+                                                {player.isAlive === false ? 'Ressusciter' : 'Éliminer'}
+                                            </button>
+                                        </div>
+                                        <h3 className={`text-xl font-bold ${player.isAlive === false ? 'text-slate-500 line-through' : 'text-white'} mb-2`}>{player.name}</h3>
                                         {player.role ? (
                                             <>
-                                                <player.role.icon className="w-12 h-12 mx-auto my-3 text-cyan-400" />
-                                                <p className="text-lg font-semibold text-cyan-300">{player.role.name}</p>
+                                                <player.role.icon className={`w-12 h-12 mx-auto my-3 ${player.isAlive === false ? 'text-slate-600' : 'text-cyan-400'}`} />
+                                                <p className={`text-lg font-semibold ${player.isAlive === false ? 'text-slate-600' : 'text-cyan-300'}`}>{player.role.name}</p>
                                             </>
                                         ) : (
                                             <p className="text-slate-500">Aucun rôle</p>
@@ -872,12 +928,14 @@ export default function App() {
                                     <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Joueurs en lice</h4>
                                     <ul className="space-y-2">
                                         {gameState.players.filter(p => p.id !== 'narrator').map(player => (
-                                            <li key={player.id} className="bg-slate-900/50 p-3 rounded-md flex items-center justify-between">
+                                            <li key={player.id} className={`bg-slate-900/50 p-3 rounded-md flex items-center justify-between ${player.isAlive === false ? 'opacity-40' : ''}`}>
                                                 <div className="flex items-center space-x-3">
-                                                    <UserIcon className="w-5 h-5 text-slate-500"/>
-                                                    <span className="text-slate-300">{player.name} {player.id === gameState.currentUser?.id && <span className="text-cyan-500 text-xs ml-1">(Vous)</span>}</span>
+                                                    <UserIcon className={`w-5 h-5 ${player.isAlive === false ? 'text-slate-600' : 'text-slate-500'}`}/>
+                                                    <span className={`${player.isAlive === false ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                                                        {player.name} {player.id === gameState.currentUser?.id && <span className="text-cyan-500 text-xs ml-1">(Vous)</span>}
+                                                    </span>
                                                 </div>
-                                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                                <div className={`w-2 h-2 rounded-full ${player.isAlive === false ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.6)]' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'}`}></div>
                                             </li>
                                         ))}
                                     </ul>
