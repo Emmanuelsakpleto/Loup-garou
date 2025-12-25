@@ -828,7 +828,7 @@ export default function App() {
                                 className="mt-8 text-cyan-500 hover:text-cyan-400 font-bold flex items-center justify-center mx-auto space-x-2 transition-colors"
                             >
                                 <UsersIcon className="w-5 h-5" />
-                                <span>Voir les survivants</span>
+                                <span>Voir les joueurs</span>
                             </button>
                          )}
                     </div>
@@ -867,7 +867,7 @@ export default function App() {
                                 </div>
 
                                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
-                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Survivants</h4>
+                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Joueurs en lice</h4>
                                     <ul className="space-y-2">
                                         {gameState.players.filter(p => p.id !== 'narrator').map(player => (
                                             <li key={player.id} className="bg-slate-900/50 p-3 rounded-md flex items-center justify-between">
