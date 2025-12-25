@@ -189,6 +189,8 @@ export default function App() {
             setIsRoleRevealed(false);
             setRoleFilter(null);
             localStorage.removeItem('loup_garou_game_state');
+            // Nettoyer l'URL (enlever ?join=...)
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, []);
 
