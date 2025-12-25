@@ -189,7 +189,9 @@ export default function App() {
     }, []); // Une seule fois au montage
 
     const resetGame = useCallback(() => {
-        if (window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
+        const isActiveGame = [GameView.LOBBY, GameView.ROLE_REVEAL, GameView.PLAYERS_LIST].includes(gameStateRef.current.view);
+        
+        if (!isActiveGame || window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
             setGameState(initialState);
             setJoinCode('');
             setIsRoleRevealed(false);
@@ -669,7 +671,7 @@ export default function App() {
                     </div>
                 );
             case GameView.LOBBY:
-                 const canStartGame = gameState.players.length -1 === totalSelectedRoles;
+                 const canStartGame = totalSelectedRoles > 0 && gameState.players.length - 1 === totalSelectedRoles;
                 return (
                     <div className="max-w-md mx-auto text-center pb-24">
                         <div className="mb-6">
