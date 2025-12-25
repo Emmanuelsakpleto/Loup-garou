@@ -404,25 +404,37 @@ export default function App() {
                                 <span className="flex-shrink mx-4 text-slate-400 font-typewriter text-sm">ou</span>
                                 <div className="flex-grow border-t border-slate-600"></div>
                             </div>
-                            <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                                <input
-                                    type="text"
-                                    placeholder="Nom du joueur"
-                                    value={playerName}
-                                    onChange={(e) => setPlayerName(e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 mb-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Code de la partie"
-                                    value={joinCode}
-                                    onChange={(e) => setJoinCode(e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 mb-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                />
-                                <button onClick={handleJoinLobby} disabled={!joinCode.trim() || !playerName.trim()} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed btn-game flex items-center justify-center space-x-2">
-                                    <DoorOpenIcon className="w-5 h-5" />
-                                    <span>Rejoindre une partie</span>
-                                </button>
+                            <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-700 shadow-xl">
+                                <div className="space-y-4">
+                                    <div className="relative">
+                                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                        <input
+                                            type="text"
+                                            placeholder="Ton nom de villageois"
+                                            value={playerName}
+                                            onChange={(e) => setPlayerName(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all"
+                                        />
+                                    </div>
+                                    <div className="relative">
+                                        <GamepadIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                        <input
+                                            type="text"
+                                            placeholder="Code secret de la partie"
+                                            value={joinCode}
+                                            onChange={(e) => setJoinCode(e.target.value)}
+                                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-500 font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleJoinLobby} 
+                                        disabled={!joinCode.trim() || !playerName.trim()} 
+                                        className="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:from-cyan-600 hover:to-cyan-500 text-white font-black py-4 px-6 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center space-x-3 uppercase tracking-widest text-sm"
+                                    >
+                                        <DoorOpenIcon className="w-5 h-5" />
+                                        <span>Rejoindre le village</span>
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className="flex items-center justify-center space-x-2 text-cyan-400 hover:text-cyan-300 font-bold py-3 px-4 rounded-lg transition-all border border-cyan-800 hover:border-cyan-600 hover:scale-105 btn-game">
@@ -446,15 +458,19 @@ export default function App() {
                             <h2 className="text-4xl font-bold font-creepy text-glow">Configuration</h2>
                         </div>
                         <p className="text-slate-400 text-center mb-8 text-lg font-typewriter">Choisissez les rôles pour votre partie</p>
-                        <div className="mb-6 bg-slate-800 p-4 rounded-lg border border-slate-700">
-                           <label htmlFor="narratorName" className="block text-sm font-medium text-slate-300 mb-2">Votre nom (Narrateur)</label>
-                            <input
-                                id="narratorName"
-                                type="text"
-                                value={narratorName}
-                                onChange={(e) => setNarratorName(e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
+                        <div className="mb-8 bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700 shadow-xl">
+                           <label htmlFor="narratorName" className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Ton nom de Narrateur</label>
+                            <div className="relative">
+                                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-500/50" />
+                                <input
+                                    id="narratorName"
+                                    type="text"
+                                    placeholder="Ex: Le Vieux Sage"
+                                    value={narratorName}
+                                    onChange={(e) => setNarratorName(e.target.value)}
+                                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-4 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all font-typewriter"
+                                />
+                            </div>
                         </div>
                         <div className="space-y-8">
                             {Object.entries(groupedRoles).map(([category, roles]) => (
@@ -499,52 +515,67 @@ export default function App() {
                             <h2 className="text-4xl font-bold font-creepy text-glow">Salon</h2>
                         </div>
                         {gameState.isNarrator && gameState.gameCode && (
-                          <div className="mb-6">
-                            <p className="text-slate-400 mb-2">Code de la partie :</p>
-                            <div className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-4 mb-4">
-                                <span className="text-4xl font-mono tracking-widest text-cyan-400 block">{gameState.gameCode}</span>
-                                <button 
-                                    onClick={handleCopyCode} 
-                                    className="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                                >
-                                    <CopyIcon className="w-5 h-5"/>
-                                    <span>Copier le code</span>
-                                </button>
+                          <div className="mb-8">
+                            <p className="text-slate-400 mb-3 font-typewriter">Partage ce code avec tes amis :</p>
+                            
+                            <div 
+                                onClick={handleCopyCode}
+                                className="group relative bg-slate-800 border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 mb-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-cyan-500/10"
+                            >
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 px-4 py-1 rounded-full border border-slate-700 text-[10px] font-black text-slate-500 group-hover:text-cyan-400 tracking-[0.2em] transition-colors">
+                                    {showCopied ? "COPIÉ !" : "CLIQUE POUR COPIER"}
+                                </div>
+                                <span className={`text-6xl font-mono tracking-[0.2em] block transition-all duration-300 ${showCopied ? 'text-green-400 scale-110' : 'text-cyan-400 group-hover:text-cyan-300'}`}>
+                                    {gameState.gameCode}
+                                </span>
+                                <div className="mt-4 flex items-center justify-center text-slate-500 group-hover:text-cyan-400 transition-colors">
+                                    {showCopied ? <ClipboardIcon className="w-5 h-5 mr-2 text-green-400" /> : <CopyIcon className="w-5 h-5 mr-2" />}
+                                    <span className={`text-xs font-bold uppercase tracking-widest ${showCopied ? 'text-green-400' : ''}`}>
+                                        {showCopied ? "Code copié dans le presse-papiers" : "Copier le code"}
+                                    </span>
+                                </div>
                             </div>
                             
-                            <div className="bg-slate-800 border border-slate-600 rounded-lg p-4 mb-3">
-                                <p className="text-slate-300 font-semibold mb-3 text-sm">📤 Inviter des joueurs</p>
-                                <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
+                                <p className="text-slate-500 font-black mb-5 text-[10px] uppercase tracking-[0.3em] text-center">Inviter les villageois via</p>
+                                <div className="flex justify-center gap-5">
                                     <button 
                                         onClick={handleShareWhatsApp}
-                                        className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                        className="group flex flex-col items-center gap-2"
                                     >
-                                        <WhatsAppIcon className="w-5 h-5"/>
-                                        <span>WhatsApp</span>
+                                        <div className="bg-green-600/10 group-hover:bg-green-600 text-green-500 group-hover:text-white p-4 rounded-xl transition-all duration-300 transform group-hover:-translate-y-1 shadow-lg">
+                                            <WhatsAppIcon className="w-6 h-6"/>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">WhatsApp</span>
                                     </button>
                                     <button 
                                         onClick={handleShareSMS}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                        className="group flex flex-col items-center gap-2"
                                     >
-                                        <SMSIcon className="w-5 h-5"/>
-                                        <span>SMS</span>
+                                        <div className="bg-blue-600/10 group-hover:bg-blue-600 text-blue-500 group-hover:text-white p-4 rounded-xl transition-all duration-300 transform group-hover:-translate-y-1 shadow-lg">
+                                            <SMSIcon className="w-6 h-6"/>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">SMS</span>
                                     </button>
                                     <button 
                                         onClick={handleShareEmail}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                        className="group flex flex-col items-center gap-2"
                                     >
-                                        <EmailIcon className="w-5 h-5"/>
-                                        <span>Email</span>
+                                        <div className="bg-purple-600/10 group-hover:bg-purple-600 text-purple-500 group-hover:text-white p-4 rounded-xl transition-all duration-300 transform group-hover:-translate-y-1 shadow-lg">
+                                            <EmailIcon className="w-6 h-6"/>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Email</span>
                                     </button>
                                     <button 
                                         onClick={handleShare}
-                                        className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                                        className="group flex flex-col items-center gap-2"
                                     >
-                                        <ClipboardIcon className="w-5 h-5"/>
-                                        <span>Copier</span>
+                                        <div className="bg-cyan-600/10 group-hover:bg-cyan-600 text-cyan-500 group-hover:text-white p-4 rounded-xl transition-all duration-300 transform group-hover:-translate-y-1 shadow-lg">
+                                            <ClipboardIcon className="w-6 h-6"/>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Lien</span>
                                     </button>
                                 </div>
-                                {showCopied && <p className="text-green-400 text-sm text-center animate-pulse">✅ Copié dans le presse-papiers !</p>}
                             </div>
                           </div>
                         )}
