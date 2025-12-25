@@ -197,10 +197,10 @@ export default function App() {
         syncGame();
     }, []); // Une seule fois au montage
 
-    const resetGame = useCallback(() => {
+    const resetGame = useCallback((force: boolean = false) => {
         const isActiveGame = [GameView.LOBBY, GameView.ROLE_REVEAL, GameView.PLAYERS_LIST].includes(gameStateRef.current.view);
         
-        if (!isActiveGame || window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
+        if (force || !isActiveGame || window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
             setGameState(initialState);
             setJoinCode('');
             setIsRoleRevealed(false);
@@ -337,13 +337,31 @@ export default function App() {
             const state = gameStateRef.current;
             
             if (state.currentUser?.id === data.playerId) {
-                alert('Vous avez été retiré de la partie par le narrateur.');
-                resetGame();
+                resetGame(true);
+                setTimeout(() => {
+                    alert('Vous avez été retiré de la partie par le narrateur.');
+                }, 100);
             } else {
-                setGameState(prev => ({
-                    ...prev,
-                    players: prev.players.filter(p => p.id !== data.playerId)
-                }));
+                setGameState(prev => {
+                    const updatedPlayers = prev.players.filter(p => p.id !== data.playerId);
+                    
+                    // Si on est narrateur, on synchronise l'état pour tout le monde
+                    if (prev.isNarrator && prev.gameId) {
+                        console.log('📢 Narrateur synchronise l\'état après expulsion');
+                        socket.emit('sync-game-state', {
+                            gameId: prev.gameId,
+                            gameState: { 
+                                players: updatedPlayers,
+                                view: prev.view
+                            }
+                        });
+                    }
+                    
+                    return {
+                        ...prev,
+                        players: updatedPlayers
+                    };
+                });
             }
         });
 
@@ -984,12 +1002,21 @@ export default function App() {
                                     <div key={player.id} className={`bg-slate-800 border ${player.isAlive === false ? 'border-red-900/50 opacity-60' : 'border-slate-700'} rounded-lg p-4 text-center transition-all`}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div className={`w-3 h-3 rounded-full ${player.isAlive === false ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.6)]' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'}`}></div>
-                                            <button 
-                                                onClick={() => togglePlayerLife(player.id)}
-                                                className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${player.isAlive === false ? 'bg-green-900/20 text-green-400 border-green-800' : 'bg-red-900/20 text-red-400 border-red-800'}`}
-                                            >
-                                                {player.isAlive === false ? 'Ressusciter' : 'Éliminer'}
-                                            </button>
+                                            <div className="flex space-x-2">
+                                                <button 
+                                                    onClick={() => togglePlayerLife(player.id)}
+                                                    className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${player.isAlive === false ? 'bg-green-900/20 text-green-400 border-green-800' : 'bg-red-900/20 text-red-400 border-red-800'}`}
+                                                >
+                                                    {player.isAlive === false ? 'Ressusciter' : 'Éliminer'}
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleKickPlayer(player.id)}
+                                                    className="text-slate-500 hover:text-red-500 p-1 transition-colors"
+                                                    title="Retirer du jeu"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                         <h3 className={`text-xl font-bold ${player.isAlive === false ? 'text-slate-500 line-through' : 'text-white'} mb-2`}>{player.name}</h3>
                                         {player.role ? (
