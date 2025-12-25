@@ -256,7 +256,7 @@ export default function App() {
                 let updatedPlayers = prev.players;
                 
                 if (!playerExists) {
-                    updatedPlayers = [...prev.players, { id: data.playerId, name: data.playerName }];
+                    updatedPlayers = [...prev.players, { id: data.playerId, name: data.playerName, isAlive: true }];
                 } else {
                     console.log('ℹ️ Joueur déjà dans la liste, ignoré');
                 }
@@ -487,7 +487,7 @@ export default function App() {
     };
 
     const totalSelectedRoles = useMemo(() => {
-        return Object.values(gameState.selectedRoles).reduce((sum: number, count: number) => sum + count, 0);
+        return (Object.values(gameState.selectedRoles) as number[]).reduce((sum: number, count: number) => sum + count, 0);
     }, [gameState.selectedRoles]);
 
     const handleStartLobby = async () => {
@@ -506,7 +506,7 @@ export default function App() {
             console.log('📋 Données du jeu:', gameData.game);
             
             // Enregistrer dans l'historique
-            const playerCount = Object.values(gameState.selectedRoles).reduce((a: number, b: number) => a + b, 0);
+            const playerCount = (Object.values(gameState.selectedRoles) as number[]).reduce((a: number, b: number) => a + b, 0);
             addCreatedGame(result.code, playerCount, gameState.selectedRoles);
             
             const narratorPlayer: Player = { id: result.hostToken, name: narratorName };
@@ -516,7 +516,11 @@ export default function App() {
                 gameCode: result.code,
                 gameId: result.gameId,
                 hostToken: result.hostToken,
-                players: gameData.game.players.map(p => ({ id: p.id, name: p.name })),
+                players: gameData.game.players.map(p => ({ 
+                    id: p.id, 
+                    name: p.name,
+                    isAlive: p.isAlive !== false
+                })),
                 view: GameView.LOBBY,
                 currentUser: narratorPlayer,
                 isNarrator: true,
@@ -562,7 +566,11 @@ export default function App() {
                     currentUser: newUser,
                     view: GameView.LOBBY,
                     // Afficher tous les joueurs déjà présents
-                    players: gameData.game.players.map(p => ({ id: p.id, name: p.name })),
+                    players: gameData.game.players.map(p => ({ 
+                        id: p.id, 
+                        name: p.name,
+                        isAlive: p.isAlive !== false
+                    })),
                 }));
                 
                 // Rejoindre la room Socket.IO (le socket est déjà initialisé)
