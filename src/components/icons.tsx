@@ -111,16 +111,6 @@ export const RefreshIcon: React.FC<{ className?: string }> = ({ className }) => 
     <path d="M3 21v-5h5" />
   </svg>
 );
-        <path d="M13.5 14a2.5 2.5 0 0 0-3 0" />
-        <path d="M16 16.5a2 2 0 0 1-2 2" />
-        <path d="M16 12a1 1 0 0 1-1 1" />
-        <path d="M3 8a4 4 0 0 1 4-4" />
-        <path d="M11 12a1 1 0 0 1-1-1" />
-        <path d="M3 16a4 4 0 0 0 4 4" />
-        <path d="M21 8a4 4 0 0 0-4-4" />
-        <path d="M21 16a4 4 0 0 1-4 4" />
-    </svg>
-);
 
 export const PiedPiperIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
