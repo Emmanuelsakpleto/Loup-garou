@@ -118,9 +118,61 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
 
+    // Synchronisation initiale si une partie est déjà en cours (persistance)
+    useEffect(() => {
+        const syncGame = async () => {
+            if (gameState.gameId) {
+                console.log('🔄 Synchronisation de la partie en cours:', gameState.gameId);
+                try {
+                    const data = await getGame(gameState.gameId);
+                    if (data && data.game) {
+                        console.log('✅ Données récupérées:', data.game);
+                        setGameState(prev => {
+                            // Mettre à jour les joueurs
+                            const updatedPlayers = data.game.players.map(p => {
+                                const role = p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined;
+                                return { id: p.id, name: p.name, role };
+                            });
+                            
+                            // Mettre à jour le currentUser si nécessaire
+                            let updatedCurrentUser = prev.currentUser;
+                            if (prev.currentUser) {
+                                const currentPlayerData = data.game.players.find(p => p.id === prev.currentUser?.id);
+                                if (currentPlayerData) {
+                                    const currentUserRole = currentPlayerData.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined;
+                                    updatedCurrentUser = { ...prev.currentUser, role: currentUserRole };
+                                }
+                            }
+
+                            // Déterminer la vue appropriée si on est en cours de jeu
+                            let newView = prev.view;
+                            if (data.game.status === 'playing' && prev.view === GameView.LOBBY) {
+                                newView = GameView.ROLE_REVEAL;
+                            }
+
+                            return {
+                                ...prev,
+                                players: updatedPlayers,
+                                currentUser: updatedCurrentUser,
+                                view: newView
+                            };
+                        });
+                    }
+                } catch (err) {
+                    console.error('❌ Erreur lors de la synchronisation du jeu:', err);
+                }
+            }
+        };
+
+        syncGame();
+    }, []); // Une seule fois au montage
+
     const resetGame = useCallback(() => {
         if (window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
             setGameState(initialState);
+            setJoinCode('');
+            setIsRoleRevealed(false);
+            setRoleFilter(null);
             localStorage.removeItem('loup_garou_game_state');
         }
     }, []);
@@ -215,15 +267,6 @@ export default function App() {
             socket.off('roles-assigned');
         };
     }, []);
-
-    const resetGame = () => {
-        setGameState(initialState);
-        setJoinCode('');
-        setPlayerName('');
-        setNarratorName('Narrateur');
-        setIsRoleRevealed(false);
-        setRoleFilter(null);
-    };
 
     const handleCreateGame = () => {
         setGameState(prev => ({ ...prev, view: GameView.CREATE_GAME, isNarrator: true }));
@@ -643,13 +686,12 @@ export default function App() {
                           </div>
                         )}
                         {!gameState.isNarrator && (
-                            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 mb-8 text-center">
-                                <div className="flex justify-center space-x-4 mb-4">
-                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '200ms' }}></div>
-                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '400ms' }}></div>
+                            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 mb-8 text-center relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-pulse"></div>
+                                <div className="flex justify-center mb-4">
+                                    <MoonIcon className="w-12 h-12 text-cyan-400 animate-pulse" />
                                 </div>
-                                <p className="text-xl font-creepy text-cyan-400 mb-2">Le village s'endort...</p>
+                                <p className="text-2xl font-creepy text-cyan-400 mb-2">Le village s'endort...</p>
                                 <p className="text-slate-400 font-typewriter">En attente que le narrateur distribue les rôles et lance la partie.</p>
                             </div>
                         )}
@@ -665,7 +707,7 @@ export default function App() {
                                     </li>
                                 )}
                                 {gameState.players.map(player => (
-                                    <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3">
+                                    <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3 border border-slate-800 hover:border-slate-700 transition-colors">
                                         <UserIcon className="w-6 h-6 text-slate-400"/>
                                         <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
                                         {player.id === 'narrator' && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Narrateur</span>}
@@ -673,6 +715,17 @@ export default function App() {
                                 ))}
                             </ul>
                         </div>
+                        
+                        <div className="mt-8">
+                            <button 
+                                onClick={resetGame}
+                                className="text-slate-500 hover:text-red-400 text-sm font-bold uppercase tracking-widest transition-colors flex items-center justify-center mx-auto gap-2"
+                            >
+                                <DoorOpenIcon className="w-4 h-4" />
+                                Quitter la partie
+                            </button>
+                        </div>
+
                         {gameState.isNarrator && (
                           <div className="mt-6 space-y-3">
                             <button onClick={addSimulatedPlayer} className="w-full border-2 border-cyan-600 hover:bg-cyan-600/20 text-cyan-400 font-bold py-3 px-4 rounded-lg transition-colors">
@@ -744,14 +797,19 @@ export default function App() {
                              !isRoleRevealed ? (
                                  <div 
                                      onClick={() => setIsRoleRevealed(true)}
-                                     className="bg-slate-800 border-2 border-dashed border-slate-600 rounded-lg p-4 text-center cursor-pointer transform hover:scale-105 transition-transform duration-300 flex flex-col items-center justify-center min-h-[320px]"
+                                     className="group bg-slate-800 border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 text-center cursor-pointer transform hover:scale-105 transition-all duration-500 flex flex-col items-center justify-center min-h-[400px] shadow-2xl hover:shadow-cyan-500/20"
                                  >
-                                     <EyeOffIcon className="w-20 h-20 mx-auto mb-4 text-slate-500" />
-                                     <h3 className="text-2xl font-bold text-white mb-2 font-creepy">Rôle Caché</h3>
-                                     <p className="text-slate-400 font-typewriter">Cliquez pour Révéler</p>
+                                     <div className="relative">
+                                         <EyeOffIcon className="w-24 h-24 mx-auto mb-6 text-slate-600 group-hover:text-cyan-400 transition-colors duration-500" />
+                                         <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                     </div>
+                                     <h3 className="text-3xl font-bold text-white mb-3 font-creepy tracking-wider">Rôle Caché</h3>
+                                     <p className="text-slate-500 group-hover:text-cyan-300 font-typewriter transition-colors duration-500">Cliquez pour Révéler votre destin</p>
                                  </div>
                              ) : (
-                                 <RoleCard role={myRole}/>
+                                 <div className="animate-reveal">
+                                     <RoleCard role={myRole}/>
+                                 </div>
                              )
                          ) : (
                              <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
@@ -990,7 +1048,7 @@ export default function App() {
         }
     };
     
-    const isGameScreen = ![GameView.HOME, GameView.CREATE_GAME].includes(gameState.view);
+    const isGameScreen = ![GameView.HOME, GameView.CREATE_GAME, GameView.HISTORY].includes(gameState.view);
 
     return (
         <div className="min-h-screen text-gray-200 p-4 sm:p-6">
