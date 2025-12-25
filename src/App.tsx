@@ -18,6 +18,7 @@ import {
   HomeIcon,
   MaskIcon,
   MinusIcon,
+  MoonIcon,
   PeopleIcon,
   PlusIcon,
   ScrollIcon,
@@ -548,7 +549,15 @@ export default function App() {
                           </div>
                         )}
                         {!gameState.isNarrator && (
-                            <p className="text-slate-400 mb-6">En attente du démarrage de la partie par le narrateur...</p>
+                            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 mb-8 text-center">
+                                <div className="flex justify-center space-x-4 mb-4">
+                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '200ms' }}></div>
+                                    <div className="w-3 h-3 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '400ms' }}></div>
+                                </div>
+                                <p className="text-xl font-creepy text-cyan-400 mb-2">Le village s'endort...</p>
+                                <p className="text-slate-400 font-typewriter">En attente que le narrateur distribue les rôles et lance la partie.</p>
+                            </div>
                         )}
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
                             <h3 className="text-xl font-bold mb-4 flex items-center justify-center space-x-2">
@@ -556,6 +565,11 @@ export default function App() {
                                 <span>Joueurs ({gameState.players.length})</span>
                             </h3>
                             <ul className="space-y-3 text-left">
+                                {gameState.players.length <= 1 && (
+                                    <li className="text-center py-4 text-slate-500 italic font-typewriter">
+                                        Aucun villageois n'est encore arrivé...
+                                    </li>
+                                )}
                                 {gameState.players.map(player => (
                                     <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3">
                                         <UserIcon className="w-6 h-6 text-slate-400"/>
@@ -570,8 +584,17 @@ export default function App() {
                             <button onClick={addSimulatedPlayer} className="w-full border-2 border-cyan-600 hover:bg-cyan-600/20 text-cyan-400 font-bold py-3 px-4 rounded-lg transition-colors">
                                 Ajouter un joueur (simulation)
                             </button>
-                             <button onClick={assignRoles} disabled={!canStartGame} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                {canStartGame ? "Distribuer les Rôles" : `Ajoutez ${totalSelectedRoles - (gameState.players.length - 1)} joueur(s)`}
+                             <button 
+                                onClick={assignRoles} 
+                                disabled={!canStartGame} 
+                                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                            >
+                                {totalSelectedRoles === (gameState.players.length - 1) 
+                                    ? "Distribuer les Rôles" 
+                                    : totalSelectedRoles < (gameState.players.length - 1)
+                                        ? `Sélectionnez encore ${ (gameState.players.length - 1) - totalSelectedRoles } rôle(s)`
+                                        : `Retirez ${ totalSelectedRoles - (gameState.players.length - 1) } rôle(s)`
+                                }
                             </button>
                           </div>  
                         )}
@@ -580,6 +603,42 @@ export default function App() {
             case GameView.ROLE_REVEAL:
                 const myRole = gameState.currentUser?.role || null;
                 
+                if (gameState.isNarrator) {
+                    return (
+                        <div className="max-w-4xl mx-auto pb-24">
+                            <div className="text-center mb-8">
+                                <h2 className="text-4xl font-bold font-creepy text-glow mb-2">Rôles Distribués</h2>
+                                <p className="text-slate-400 font-typewriter">Voici la liste des rôles pour cette partie.</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                                {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                    <div key={player.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center shadow-lg">
+                                        <h3 className="text-xl font-bold text-white mb-2">{player.name}</h3>
+                                        {player.role ? (
+                                            <div className="flex flex-col items-center">
+                                                <player.role.icon className="w-12 h-12 mb-2 text-cyan-400" />
+                                                <p className="text-lg font-semibold text-cyan-300">{player.role.name}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-slate-500 italic">Attribution en cours...</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-center">
+                                <button 
+                                    onClick={() => setGameState(prev => ({ ...prev, view: GameView.PLAYERS_LIST }))}
+                                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-glow"
+                                >
+                                    Commencer la Nuit 🌙
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
                     <div className="max-w-md mx-auto text-center pb-24">
                          <div className="mb-6">
@@ -602,9 +661,19 @@ export default function App() {
                              )
                          ) : (
                              <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
-                                 <p className="text-slate-400 font-typewriter mb-4">Le narrateur n'a pas encore distribué les rôles.</p>
+                                 <p className="text-slate-400 font-typewriter mb-4">Le narrateur prépare la distribution...</p>
                                  <p className="text-slate-500 text-sm">En attente...</p>
                              </div>
+                         )}
+
+                         {myRole && (
+                            <button 
+                                onClick={() => setGameState(prev => ({ ...prev, view: GameView.PLAYERS_LIST }))}
+                                className="mt-8 text-cyan-500 hover:text-cyan-400 font-bold flex items-center justify-center mx-auto space-x-2 transition-colors"
+                            >
+                                <UsersIcon className="w-5 h-5" />
+                                <span>Voir les survivants</span>
+                            </button>
                          )}
                     </div>
                 );
@@ -632,19 +701,40 @@ export default function App() {
                                 ))}
                              </div>
                          ) : (
-                             <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 max-w-md mx-auto">
-                                <ul className="space-y-3 text-left">
-                                    {gameState.players.map(player => (
-                                        <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3">
-                                            <UserIcon className="w-6 h-6 text-slate-400"/>
-                                            <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
-                                            {player.id === 'narrator' && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Narrateur</span>}
-                                        </li>
-                                    ))}
-                                </ul>
+                             <div className="max-w-md mx-auto">
+                                <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6 text-center shadow-lg">
+                                    <div className="animate-pulse mb-4">
+                                        <MoonIcon className="w-12 h-12 mx-auto text-indigo-400" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-2 font-creepy">La Nuit Tombe...</h3>
+                                    <p className="text-slate-400 font-typewriter">Fermez tous les yeux. Écoutez attentivement les instructions du narrateur.</p>
+                                </div>
+
+                                <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
+                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Survivants</h4>
+                                    <ul className="space-y-2">
+                                        {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                            <li key={player.id} className="bg-slate-900/50 p-3 rounded-md flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    <UserIcon className="w-5 h-5 text-slate-500"/>
+                                                    <span className="text-slate-300">{player.name} {player.id === gameState.currentUser?.id && <span className="text-cyan-500 text-xs ml-1">(Vous)</span>}</span>
+                                                </div>
+                                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
                          )}
-                    </div>
+                         <div className="mt-8 flex justify-center">
+                            <button 
+                                onClick={() => setGameState(prev => ({ ...prev, view: GameView.ROLE_REVEAL }))}
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-6 rounded-lg border border-slate-700 transition-all flex items-center space-x-2"
+                            >
+                                <MaskIcon className="w-5 h-5" />
+                                <span>{gameState.isNarrator ? "Récapitulatif des Rôles" : "Voir mon Rôle"}</span>
+                            </button>
+                         </div>                    </div>
                 )
             case GameView.ROLE_DIRECTORY:
                 const groupedFilteredRoles = groupRolesByCategory(filteredRoles);
