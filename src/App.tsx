@@ -157,7 +157,7 @@ export default function App() {
                                     id: p.id, 
                                     name: p.name, 
                                     role,
-                                    isAlive: p.isAlive !== false // Par défaut vivant
+                                    isAlive: p.isAlive ?? true // Par défaut vivant
                                 };
                             });
                             
@@ -170,7 +170,7 @@ export default function App() {
                                     updatedCurrentUser = { 
                                         ...prev.currentUser, 
                                         role: currentUserRole,
-                                        isAlive: currentPlayerData.isAlive !== false
+                                        isAlive: currentPlayerData.isAlive ?? true
                                     };
                                 }
                             }
@@ -318,7 +318,7 @@ export default function App() {
                         id: p.id, 
                         name: p.name, 
                         role,
-                        isAlive: p.isAlive !== false
+                        isAlive: p.isAlive ?? true
                     };
                 });
                 
@@ -328,7 +328,7 @@ export default function App() {
                 const updatedCurrentUser = prev.currentUser ? { 
                     ...prev.currentUser, 
                     role: currentUserRole,
-                    isAlive: currentPlayerData?.isAlive !== false
+                    isAlive: currentPlayerData?.isAlive ?? true
                 } : null;
                 
                 return {
@@ -398,7 +398,7 @@ export default function App() {
             const newState = {
                 ...prev,
                 players: prev.players.map(p => 
-                    p.id === playerId ? { ...p, isAlive: p.isAlive === false ? true : false } : p
+                    p.id === playerId ? { ...p, isAlive: !(p.isAlive ?? true) } : p
                 )
             };
             
@@ -441,7 +441,7 @@ export default function App() {
                             id: p.id,
                             name: p.name,
                             role: p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined,
-                            isAlive: p.isAlive !== false
+                            isAlive: p.isAlive ?? true
                         }));
 
                         let updatedCurrentUser = prev.currentUser;
@@ -451,7 +451,7 @@ export default function App() {
                                 updatedCurrentUser = { 
                                     ...prev.currentUser, 
                                     role: currentPlayerData.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined,
-                                    isAlive: currentPlayerData.isAlive !== false
+                                    isAlive: currentPlayerData.isAlive ?? true
                                 };
                             }
                         }
@@ -519,7 +519,7 @@ export default function App() {
                 players: gameData.game.players.map(p => ({ 
                     id: p.id, 
                     name: p.name,
-                    isAlive: p.isAlive !== false
+                    isAlive: p.isAlive ?? true
                 })),
                 view: GameView.LOBBY,
                 currentUser: narratorPlayer,
@@ -569,7 +569,7 @@ export default function App() {
                     players: gameData.game.players.map(p => ({ 
                         id: p.id, 
                         name: p.name,
-                        isAlive: p.isAlive !== false
+                        isAlive: p.isAlive ?? true
                     })),
                 }));
                 

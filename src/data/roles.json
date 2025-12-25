@@ -192,8 +192,8 @@
   {
     "id": "pyromaniac",
     "name": "Pyromane",
-    "team": "VILLAGER",
-    "category": "VILLAGEOIS",
+    "team": "SOLO",
+    "category": "NEUTRES / SOLITAIRES",
     "power": "Marque des cibles pour une mise à mort différée.",
     "description": "Chaque nuit, il peut choisir d'asperger d'essence la maison d'un joueur. Il peut ensuite décider de tout faire flamber, tuant les joueurs aspergés.",
     "imagePath": null,
@@ -276,6 +276,56 @@
     "category": "NEUTRES / SOLITAIRES",
     "power": "Gagne s'il est condamné par le village.",
     "description": "Son objectif est de se faire accuser et condamner par le village. S'il y parvient, il gagne la partie seul et le jeu s'arrête.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "bear-tamer",
+    "name": "Montreur d'Ours",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Grogne si un loup est voisin.",
+    "description": "À chaque matin, si un loup-garou est l'un de ses voisins immédiats, l'ours grogne pour alerter le village.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "little-red-riding-hood",
+    "name": "Le Petit Chaperon Rouge",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Immunisée tant que le Chasseur vit.",
+    "description": "Tant que le Chasseur est en vie, elle est immunisée contre les attaques des Loups-Garous la nuit.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "dictator",
+    "name": "Le Dictateur",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Peut décider seul du vote (1 fois).",
+    "description": "Une fois par partie, il peut prendre le pouvoir avant le vote, décider seul qui sera exécuté, et devenir le nouveau Capitaine (Maire).",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "three-brothers",
+    "name": "Les Trois Frères",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Se concertent la nuit.",
+    "description": "Ils se réveillent ensemble la nuit pour se concerter (comme les loups), ce qui leur permet de coordonner leurs votes le jour.",
+    "imagePath": null,
+    "isPremium": false
+  },
+  {
+    "id": "two-sisters",
+    "name": "Les Deux Sœurs",
+    "team": "VILLAGER",
+    "category": "VILLAGEOIS",
+    "power": "Se concertent la nuit.",
+    "description": "Elles se réveillent ensemble la nuit pour se concerter et s'entraider.",
     "imagePath": null,
     "isPremium": false
   }

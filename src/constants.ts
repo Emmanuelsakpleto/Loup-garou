@@ -3,7 +3,8 @@ import {
   WerewolfIcon, VillagerIcon, SeerIcon, WitchIcon, HunterIcon, CupidIcon, BigBadWolfIcon,
   WhiteWolfIcon, InfectiousFatherWolfIcon, LittleGirlIcon, ElderIcon, SaviorIcon, ScapegoatIcon,
   VillageIdiotIcon, WildChildIcon, RavenIcon, PiedPiperIcon, ShamanWolfIcon, AlphaWolfIcon,
-  FoxIcon, KnightIcon, PyromaniacIcon, HeirIcon, ExecutionerIcon, AngelIcon, ThiefIcon, SurvivorIcon, ClownIcon
+  FoxIcon, KnightIcon, PyromaniacIcon, HeirIcon, ExecutionerIcon, AngelIcon, ThiefIcon, SurvivorIcon, ClownIcon,
+  BearTamerIcon, LittleRedRidingHoodIcon, DictatorIcon, ThreeBrothersIcon, TwoSistersIcon
 } from './components/icons';
 
 export const ROLES: Role[] = [
@@ -185,9 +186,9 @@ export const ROLES: Role[] = [
     name: 'Pyromane',
     description: "Chaque nuit, il peut choisir d'asperger d'essence la maison d'un joueur. Il peut ensuite décider de tout faire flamber, tuant les joueurs aspergés.",
     power: "Marque des cibles pour une mise à mort différée.",
-    team: Team.VILLAGER,
+    team: Team.SOLO,
     icon: PyromaniacIcon,
-    category: 'VILLAGEOIS',
+    category: 'NEUTRES / SOLITAIRES',
   },
   {
     id: 'heir',
@@ -261,5 +262,50 @@ export const ROLES: Role[] = [
     team: Team.SOLO,
     icon: ClownIcon,
     category: 'NEUTRES / SOLITAIRES',
+  },
+  {
+    id: 'bear-tamer',
+    name: "Montreur d'Ours",
+    description: "À chaque matin, si un loup-garou est l'un de ses voisins immédiats, l'ours grogne pour alerter le village.",
+    power: "Grogne si un loup est voisin.",
+    team: Team.VILLAGER,
+    icon: BearTamerIcon,
+    category: 'VILLAGEOIS',
+  },
+  {
+    id: 'little-red-riding-hood',
+    name: "Le Petit Chaperon Rouge",
+    description: "Tant que le Chasseur est en vie, elle est immunisée contre les attaques des Loups-Garous la nuit.",
+    power: "Immunisée tant que le Chasseur vit.",
+    team: Team.VILLAGER,
+    icon: LittleRedRidingHoodIcon,
+    category: 'VILLAGEOIS',
+  },
+  {
+    id: 'dictator',
+    name: "Le Dictateur",
+    description: "Une fois par partie, il peut prendre le pouvoir avant le vote, décider seul qui sera exécuté, et devenir le nouveau Capitaine (Maire).",
+    power: "Peut décider seul du vote (1 fois).",
+    team: Team.VILLAGER,
+    icon: DictatorIcon,
+    category: 'VILLAGEOIS',
+  },
+  {
+    id: 'three-brothers',
+    name: "Les Trois Frères",
+    description: "Ils se réveillent ensemble la nuit pour se concerter (comme les loups), ce qui leur permet de coordonner leurs votes le jour.",
+    power: "Se concertent la nuit.",
+    team: Team.VILLAGER,
+    icon: ThreeBrothersIcon,
+    category: 'VILLAGEOIS',
+  },
+  {
+    id: 'two-sisters',
+    name: "Les Deux Sœurs",
+    description: "Elles se réveillent ensemble la nuit pour se concerter et s'entraider.",
+    power: "Se concertent la nuit.",
+    team: Team.VILLAGER,
+    icon: TwoSistersIcon,
+    category: 'VILLAGEOIS',
   },
 ];
