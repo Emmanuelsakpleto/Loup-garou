@@ -387,15 +387,6 @@ export default function App() {
             }
         }
     };
-    
-    const addSimulatedPlayer = () => {
-      const simulatedName = `Joueur ${gameState.players.length}`;
-      const newPlayer: Player = { id: `sim-${Date.now()}`, name: simulatedName };
-      setGameState(prev => ({
-        ...prev,
-        players: [...prev.players, newPlayer],
-      }));
-    };
 
     const assignRoles = useCallback(async () => {
         if (!gameState.gameId || !gameState.hostToken) {
@@ -728,9 +719,6 @@ export default function App() {
 
                         {gameState.isNarrator && (
                           <div className="mt-6 space-y-3">
-                            <button onClick={addSimulatedPlayer} className="w-full border-2 border-cyan-600 hover:bg-cyan-600/20 text-cyan-400 font-bold py-3 px-4 rounded-lg transition-colors">
-                                Ajouter un joueur (simulation)
-                            </button>
                              <button 
                                 onClick={assignRoles} 
                                 disabled={!canStartGame} 
