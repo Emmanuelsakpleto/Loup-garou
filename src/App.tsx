@@ -1,5 +1,5 @@
 // FIX: Corrected the React import by removing the extraneous 'a,'.
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { GameView, type GameState, type Player, type Role, Team } from './types';
 import { ROLES } from './constants';
 import { createGame, joinGame, getGame, assignRoles as assignRolesAPI, initSocket, joinGameRoom, getSocket } from './services/api';
@@ -117,6 +117,21 @@ export default function App() {
     const [roleFilter, setRoleFilter] = useState<Team | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
+    const pseudoInputRef = useRef<HTMLInputElement>(null);
+
+    // Récupérer le code de la partie depuis l'URL si présent
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const codeFromUrl = params.get('join');
+        if (codeFromUrl) {
+            console.log('🔗 Code détecté dans l\'URL:', codeFromUrl);
+            setJoinCode(codeFromUrl.toUpperCase());
+            // Focus le pseudo après un court délai pour laisser le temps au rendu
+            setTimeout(() => {
+                pseudoInputRef.current?.focus();
+            }, 100);
+        }
+    }, []);
 
     // Synchronisation initiale si une partie est déjà en cours (persistance)
     useEffect(() => {
@@ -506,6 +521,7 @@ export default function App() {
                                     <div className="relative">
                                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                         <input
+                                            ref={pseudoInputRef}
                                             type="text"
                                             placeholder="Ton pseudo"
                                             value={playerName}
