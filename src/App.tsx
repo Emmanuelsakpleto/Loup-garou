@@ -21,6 +21,7 @@ import {
   MoonIcon,
   PeopleIcon,
   PlusIcon,
+  RefreshIcon,
   ScrollIcon,
   SettingsIcon,
   SMSIcon,
@@ -415,6 +416,49 @@ export default function App() {
             const socket = getSocket();
             if (socket && gameState.gameId) {
                 socket.emit('kick-player', { gameId: gameState.gameId, playerId });
+            }
+        }
+    };
+
+    const handleRefresh = async () => {
+        if (gameState.gameId) {
+            setIsLoading(true);
+            setLoadingMessage('Mise à jour de la liste...');
+            try {
+                const data = await getGame(gameState.gameId);
+                if (data && data.game) {
+                    setGameState(prev => {
+                        const updatedPlayers = data.game.players.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            role: p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined,
+                            isAlive: p.isAlive !== false
+                        }));
+
+                        let updatedCurrentUser = prev.currentUser;
+                        if (prev.currentUser) {
+                            const currentPlayerData = data.game.players.find(p => p.id === prev.currentUser?.id);
+                            if (currentPlayerData) {
+                                updatedCurrentUser = { 
+                                    ...prev.currentUser, 
+                                    role: currentPlayerData.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined,
+                                    isAlive: currentPlayerData.isAlive !== false
+                                };
+                            }
+                        }
+
+                        return { 
+                            ...prev, 
+                            players: updatedPlayers,
+                            currentUser: updatedCurrentUser
+                        };
+                    });
+                }
+            } catch (err) {
+                console.error('❌ Erreur lors du rafraîchissement:', err);
+            } finally {
+                setIsLoading(false);
+                setLoadingMessage('');
             }
         }
     };
@@ -878,6 +922,13 @@ export default function App() {
                         {gameState.isNarrator && (
                           <div className="mt-6 space-y-3">
                              <button 
+                                onClick={handleRefresh}
+                                className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 border border-slate-600"
+                            >
+                                <RefreshIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                Actualiser la liste
+                            </button>
+                             <button 
                                 onClick={assignRoles} 
                                 disabled={!canStartGame} 
                                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
@@ -995,6 +1046,15 @@ export default function App() {
                          <div className="text-center mb-6">
                             <PeopleIcon className="w-12 h-12 mx-auto mb-3 text-cyan-400" />
                             <h2 className="text-4xl font-bold font-creepy text-glow">Les Joueurs</h2>
+                            {gameState.isNarrator && (
+                                <button 
+                                    onClick={handleRefresh}
+                                    className="mt-4 inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 transition-colors text-sm font-bold uppercase tracking-widest"
+                                >
+                                    <RefreshIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                    Actualiser l'état
+                                </button>
+                            )}
                          </div>
                          {gameState.isNarrator ? (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

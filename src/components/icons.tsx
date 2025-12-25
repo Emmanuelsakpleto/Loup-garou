@@ -98,6 +98,19 @@ export const RavenIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path d="M14.5 7.5a2 2 0 0 1-2-2" />
         <path d="M14 6.5h2" />
         <path d="M12 9.5V11" />
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+        <path d="m8 11 4 4 4-4" />
+    </svg>
+);
+
+export const RefreshIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+    <path d="M3 21v-5h5" />
+  </svg>
+);
         <path d="M13.5 14a2.5 2.5 0 0 0-3 0" />
         <path d="M16 16.5a2 2 0 0 1-2 2" />
         <path d="M16 12a1 1 0 0 1-1 1" />
