@@ -79,21 +79,84 @@ const groupRolesByCategory = (roles: Role[]) => {
     }, {});
 }
 
+// Helper to load state from localStorage with role re-mapping
+const loadPersistedState = (): GameState => {
+    try {
+        const saved = localStorage.getItem('loup_garou_game_state');
+        if (!saved) return initialState;
+        
+        const parsed = JSON.parse(saved);
+        
+        // Re-mapper les rôles car les fonctions (icones) ne sont pas sérialisables
+        const mapPlayerRole = (p: Player) => {
+            if (p.role && typeof p.role === 'object') {
+                const fullRole = ROLES.find(r => r.id === (p.role as any).id);
+                return { ...p, role: fullRole };
+            }
+            return p;
+        };
+
+        return {
+            ...parsed,
+            players: (parsed.players || []).map(mapPlayerRole),
+            currentUser: parsed.currentUser ? mapPlayerRole(parsed.currentUser) : null
+        };
+    } catch (e) {
+        console.error('Erreur lors du chargement du state persisté:', e);
+        return initialState;
+    }
+};
+
 export default function App() {
-    const [gameState, setGameState] = useState<GameState>(initialState);
+    const [gameState, setGameState] = useState<GameState>(loadPersistedState);
     const [joinCode, setJoinCode] = useState('');
-    const [playerName, setPlayerName] = useState('');
-    const [narratorName, setNarratorName] = useState('Narrateur');
+    const [playerName, setPlayerName] = useState(() => localStorage.getItem('loup_garou_player_name') || '');
+    const [narratorName, setNarratorName] = useState(() => localStorage.getItem('loup_garou_narrator_name') || 'Narrateur');
     const [showCopied, setShowCopied] = useState(false);
     const [isRoleRevealed, setIsRoleRevealed] = useState(false);
     const [roleFilter, setRoleFilter] = useState<Team | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
 
+    const resetGame = useCallback(() => {
+        if (window.confirm('Voulez-vous vraiment quitter la partie en cours ?')) {
+            setGameState(initialState);
+            localStorage.removeItem('loup_garou_game_state');
+        }
+    }, []);
+
+    // Persister le state dans localStorage
+    useEffect(() => {
+        localStorage.setItem('loup_garou_game_state', JSON.stringify(gameState));
+    }, [gameState]);
+
+    useEffect(() => {
+        localStorage.setItem('loup_garou_player_name', playerName);
+    }, [playerName]);
+
+    useEffect(() => {
+        localStorage.setItem('loup_garou_narrator_name', narratorName);
+    }, [narratorName]);
+
     // Socket.IO event listeners
     useEffect(() => {
         // Initialiser le socket dès le montage du composant
         const socket = initSocket();
+
+        const onConnect = () => {
+            console.log('🔌 Socket connecté, vérification de la room...');
+            if (gameState.gameId) {
+                console.log('🎮 Rejoint la room:', gameState.gameId);
+                joinGameRoom(gameState.gameId);
+            }
+        };
+
+        socket.on('connect', onConnect);
+
+        // Si déjà connecté au montage
+        if (socket.connected && gameState.gameId) {
+            joinGameRoom(gameState.gameId);
+        }
 
         // Écouter l'arrivée d'un nouveau joueur
         socket.on('player-joined', (data: { playerId: string; playerName: string }) => {
@@ -968,6 +1031,10 @@ export default function App() {
                       <button onClick={() => setView(GameView.ROLE_DIRECTORY)} className={`flex flex-col items-center p-3 transition-colors ${gameState.view === GameView.ROLE_DIRECTORY ? 'text-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>
                           <BookOpenIcon className="w-6 h-6 mb-1"/>
                           <span className="text-xs font-medium">Rôles</span>
+                      </button>
+                      <button onClick={resetGame} className="flex flex-col items-center p-3 text-red-400 hover:text-red-300 transition-colors">
+                          <DoorOpenIcon className="w-6 h-6 mb-1"/>
+                          <span className="text-xs font-medium">Quitter</span>
                       </button>
                   </nav>
                 )}
