@@ -101,9 +101,9 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
-export function joinGameRoom(gameId: string) {
+export function joinGameRoom(gameId: string, playerId?: string, playerName?: string) {
   if (socket) {
-    socket.emit('join-room', { gameId });
+    socket.emit('join-room', { gameId, playerId, playerName });
   }
 }
 

@@ -152,7 +152,12 @@ export default function App() {
                             // Mettre à jour les joueurs
                             const updatedPlayers = data.game.players.map(p => {
                                 const role = p.roleId ? ROLES.find(r => r.id === p.roleId) : undefined;
-                                return { id: p.id, name: p.name, role };
+                                return { 
+                                    id: p.id, 
+                                    name: p.name, 
+                                    role,
+                                    isAlive: p.isAlive !== false // Par défaut vivant
+                                };
                             });
                             
                             // Mettre à jour le currentUser si nécessaire
@@ -161,7 +166,11 @@ export default function App() {
                                 const currentPlayerData = data.game.players.find(p => p.id === prev.currentUser?.id);
                                 if (currentPlayerData) {
                                     const currentUserRole = currentPlayerData.roleId ? ROLES.find(r => r.id === currentPlayerData.roleId) : undefined;
-                                    updatedCurrentUser = { ...prev.currentUser, role: currentUserRole };
+                                    updatedCurrentUser = { 
+                                        ...prev.currentUser, 
+                                        role: currentUserRole,
+                                        isAlive: currentPlayerData.isAlive !== false
+                                    };
                                 }
                             }
 
@@ -222,9 +231,10 @@ export default function App() {
 
         const onConnect = () => {
             console.log('🔌 Socket connecté, vérification de la room...');
-            if (gameStateRef.current.gameId) {
-                console.log('🎮 Rejoint la room:', gameStateRef.current.gameId);
-                joinGameRoom(gameStateRef.current.gameId);
+            const state = gameStateRef.current;
+            if (state.gameId) {
+                console.log('🎮 Rejoint la room:', state.gameId);
+                joinGameRoom(state.gameId, state.currentUser?.id, state.currentUser?.name);
             }
         };
 
@@ -232,7 +242,8 @@ export default function App() {
 
         // Si déjà connecté au montage
         if (socket.connected && gameStateRef.current.gameId) {
-            joinGameRoom(gameStateRef.current.gameId);
+            const state = gameStateRef.current;
+            joinGameRoom(state.gameId, state.currentUser?.id, state.currentUser?.name);
         }
 
         // Écouter l'arrivée d'un nouveau joueur
@@ -241,13 +252,29 @@ export default function App() {
             setGameState(prev => {
                 // Vérifier si le joueur n'existe pas déjà dans la liste
                 const playerExists = prev.players.some(p => p.id === data.playerId);
-                if (playerExists) {
+                let updatedPlayers = prev.players;
+                
+                if (!playerExists) {
+                    updatedPlayers = [...prev.players, { id: data.playerId, name: data.playerName }];
+                } else {
                     console.log('ℹ️ Joueur déjà dans la liste, ignoré');
-                    return prev;
                 }
+
+                // Si on est narrateur, on synchronise l'état complet pour le nouveau venu
+                if (prev.isNarrator && prev.gameId) {
+                    console.log('📢 Narrateur synchronise l\'état pour le nouveau joueur');
+                    socket.emit('sync-game-state', {
+                        gameId: prev.gameId,
+                        gameState: { 
+                            players: updatedPlayers,
+                            view: prev.view
+                        }
+                    });
+                }
+
                 return {
                     ...prev,
-                    players: [...prev.players, { id: data.playerId, name: data.playerName }],
+                    players: updatedPlayers,
                 };
             });
         });
@@ -258,7 +285,7 @@ export default function App() {
             setGameState(prev => ({
                 ...prev,
                 players: data.players || prev.players,
-                // On peut ajouter d'autres champs à synchroniser ici
+                view: data.view || prev.view,
             }));
         });
 
@@ -269,7 +296,10 @@ export default function App() {
                 console.log('📢 Nouveau socket détecté, renvoi de l\'état actuel...');
                 socket.emit('sync-game-state', {
                     gameId: state.gameId,
-                    gameState: { players: state.players }
+                    gameState: { 
+                        players: state.players,
+                        view: state.view
+                    }
                 });
             }
         });
@@ -301,12 +331,29 @@ export default function App() {
             setIsRoleRevealed(false);
         });
 
+        // Écouter l'expulsion d'un joueur
+        socket.on('player-kicked', (data: { playerId: string }) => {
+            console.log('🚫 Joueur expulsé:', data.playerId);
+            const state = gameStateRef.current;
+            
+            if (state.currentUser?.id === data.playerId) {
+                alert('Vous avez été retiré de la partie par le narrateur.');
+                resetGame();
+            } else {
+                setGameState(prev => ({
+                    ...prev,
+                    players: prev.players.filter(p => p.id !== data.playerId)
+                }));
+            }
+        });
+
         // Nettoyage à la destruction du composant
         return () => {
             socket.off('player-joined');
             socket.off('game-state-updated');
             socket.off('player-connected');
             socket.off('roles-assigned');
+            socket.off('player-kicked');
         };
     }, []);
 
@@ -333,13 +380,25 @@ export default function App() {
                 if (socket) {
                     socket.emit('sync-game-state', {
                         gameId: prev.gameId,
-                        gameState: { players: newState.players }
+                        gameState: { 
+                            players: newState.players,
+                            view: newState.view
+                        }
                     });
                 }
             }
             
             return newState;
         });
+    };
+
+    const handleKickPlayer = (playerId: string) => {
+        if (window.confirm('Voulez-vous vraiment retirer ce joueur de la partie ?')) {
+            const socket = getSocket();
+            if (socket && gameState.gameId) {
+                socket.emit('kick-player', { gameId: gameState.gameId, playerId });
+            }
+        }
     };
 
     const updateRoleCount = (roleId: string, delta: number) => {
@@ -393,7 +452,7 @@ export default function App() {
             }));
             
             // Rejoindre la room Socket.IO (le socket est déjà initialisé)
-            joinGameRoom(result.gameId);
+            joinGameRoom(result.gameId, result.hostToken, narratorName);
             console.log('🎮 Room rejointe:', result.gameId);
         } catch (error) {
             console.error('❌ Erreur lors de la création du jeu:', error);
@@ -436,7 +495,7 @@ export default function App() {
                 }));
                 
                 // Rejoindre la room Socket.IO (le socket est déjà initialisé)
-                joinGameRoom(result.gameId);
+                joinGameRoom(result.gameId, result.playerId, playerName);
                 console.log('🎮 Room rejointe:', result.gameId);
             } catch (error: any) {
                 console.error('❌ Erreur lors de la connexion au jeu:', error);
@@ -756,7 +815,7 @@ export default function App() {
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
                             <h3 className="text-xl font-bold mb-4 flex items-center justify-center space-x-2">
                                 <UsersIcon className="w-6 h-6"/>
-                                <span>Joueurs ({gameState.players.length})</span>
+                                <span>Joueurs ({gameState.players.length - 1})</span>
                             </h3>
                             <ul className="space-y-3 text-left">
                                 {gameState.players.length <= 1 && (
@@ -764,13 +823,27 @@ export default function App() {
                                         Aucun joueur n'est encore arrivé...
                                     </li>
                                 )}
-                                {gameState.players.map(player => (
-                                    <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center space-x-3 border border-slate-800 hover:border-slate-700 transition-colors">
-                                        <UserIcon className="w-6 h-6 text-slate-400"/>
-                                        <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
-                                        {player.id === 'narrator' && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Narrateur</span>}
-                                    </li>
-                                ))}
+                                {gameState.players.map(player => {
+                                    const isNarrator = player.id === gameState.hostToken || player.id === 'narrator';
+                                    return (
+                                        <li key={player.id} className="bg-slate-900 p-3 rounded-md flex items-center justify-between border border-slate-800 hover:border-slate-700 transition-colors">
+                                            <div className="flex items-center space-x-3">
+                                                <UserIcon className="w-6 h-6 text-slate-400"/>
+                                                <span className="font-semibold text-white">{player.name} {player.id === gameState.currentUser?.id && '(Vous)'}</span>
+                                                {isNarrator && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full ml-2">Narrateur</span>}
+                                            </div>
+                                            {gameState.isNarrator && !isNarrator && (
+                                                <button 
+                                                    onClick={() => handleKickPlayer(player.id)}
+                                                    className="text-slate-500 hover:text-red-500 p-1 transition-colors"
+                                                    title="Retirer du jeu"
+                                                >
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                         
@@ -814,7 +887,7 @@ export default function App() {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                                {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                {gameState.players.filter(p => p.id !== gameState.hostToken && p.id !== 'narrator').map(player => (
                                     <div key={player.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center shadow-lg">
                                         <h3 className="text-xl font-bold text-white mb-2">{player.name}</h3>
                                         {player.role ? (
@@ -831,7 +904,21 @@ export default function App() {
 
                             <div className="flex justify-center">
                                 <button 
-                                    onClick={() => setGameState(prev => ({ ...prev, view: GameView.PLAYERS_LIST }))}
+                                    onClick={() => {
+                                        const nextView = GameView.PLAYERS_LIST;
+                                        setGameState(prev => {
+                                            if (prev.isNarrator && prev.gameId) {
+                                                getSocket()?.emit('sync-game-state', {
+                                                    gameId: prev.gameId,
+                                                    gameState: { 
+                                                        players: prev.players,
+                                                        view: nextView
+                                                    }
+                                                });
+                                            }
+                                            return { ...prev, view: nextView };
+                                        });
+                                    }}
                                     className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-glow"
                                 >
                                     Commencer la Nuit 🌙
@@ -893,7 +980,7 @@ export default function App() {
                          </div>
                          {gameState.isNarrator ? (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                {gameState.players.filter(p => p.id !== gameState.hostToken && p.id !== 'narrator').map(player => (
                                     <div key={player.id} className={`bg-slate-800 border ${player.isAlive === false ? 'border-red-900/50 opacity-60' : 'border-slate-700'} rounded-lg p-4 text-center transition-all`}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div className={`w-3 h-3 rounded-full ${player.isAlive === false ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.6)]' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'}`}></div>
@@ -929,7 +1016,7 @@ export default function App() {
                                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
                                     <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Joueurs en lice</h4>
                                     <ul className="space-y-2">
-                                        {gameState.players.filter(p => p.id !== 'narrator').map(player => (
+                                        {gameState.players.filter(p => p.id !== gameState.hostToken && p.id !== 'narrator').map(player => (
                                             <li key={player.id} className={`bg-slate-900/50 p-3 rounded-md flex items-center justify-between ${player.isAlive === false ? 'opacity-40' : ''}`}>
                                                 <div className="flex items-center space-x-3">
                                                     <UserIcon className={`w-5 h-5 ${player.isAlive === false ? 'text-slate-600' : 'text-slate-500'}`}/>
