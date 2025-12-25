@@ -1277,7 +1277,7 @@ export default function App() {
                                                     <p className="text-2xl font-mono font-bold text-white mb-2">{game.code}</p>
                                                     {game.playerCount && (
                                                         <p className="text-slate-400 text-sm">
-                                                            {game.playerCount} joueur{game.playerCount > 1 ? 's' : ''}
+                                                            {game.playerCount} joueur{(game.playerCount || 0) > 1 ? 's' : ''}
                                                         </p>
                                                     )}
                                                     {game.myRole && (
